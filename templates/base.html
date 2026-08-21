@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Task & Matters Management{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="layout">
+        <!-- =====SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="/media/images/logo.png" alt="Logo" class="logo-icon">
+                <h2>Task And Matters</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Main</div>
+                    <a href="{% url 'dashboard' %}"
+                        class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-th-large"></i> Dashboard
+                    </a>
+                    <a href="{% url 'matter_list' %}"
+                        class="sidebar-link {% if 'matter' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-briefcase"></i> Matters
+                    </a>
+                    <a href="{% url 'timeline' %}"
+                        class="sidebar-link {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
+                        <i class="fas fa-stream"></i> Timeline
+                    </a>
+                    <a href="{% url 'task_list' %}"
+                        class="sidebar-link {% if 'task' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-tasks"></i> Tasks
+                    </a>
+                    <a href="{% url 'reminder_list' %}"
+                        class="sidebar-link {% if 'reminder' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-bell"></i> Reminders
+                    </a>
+                    <a href="{% url 'document_list' %}"
+                        class="sidebar-link {% if 'document' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-file-alt"></i> Documents
+                    </a>
+                    <a href="{% url 'comment_list' %}"
+                        class="sidebar-link {% if request.resolver_match.url_name == 'comment_list' %}active{% endif %}">
+                        <i class="fas fa-comments"></i> Comments
+                    </a>
+                    <a href="{% url 'reports' %}"
+                        class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                        <i class="fas fa-chart-bar"></i> Reports
+                    </a>
+                </div>
+
+                {% if request.user.profile.is_admin %}
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Administration</div>
+                    <a href="{% url 'user_list' %}"
+                        class="sidebar-link {% if 'user' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-users-cog"></i> Users
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <div class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <form class="topbar-search" action="{% url 'search' %}" method="GET">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="q" placeholder="Search matters, tasks..."
+                            value="{{ request.GET.q|default:'' }}">
+                    </form>
+                </div>
+                <div class="topbar-right">
+                    <a href="{% url 'notification_list' %}" class="topbar-btn" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        {% if unread_notifications %}
+                        <span class="notification-badge">{{ unread_notifications }}</span>
+                        {% endif %}
+                    </a>
+                    <div class="profile-dropdown">
+                        <button class="profile-btn" onclick="toggleDropdown()" type="button">
+                            <div class="profile-avatar">
+                                {{ request.user.username|first|upper }}
+                            </div>
+                            <div>
+                                <div class="profile-name">{{ request.user.username }}</div>
+                                <div class="profile-role">
+                                    {% if request.user.profile %}{{ request.user.profile.get_role_display }}{% endif %}
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-down" style="font-size: 10px; color: var(--text-light);"></i>
+                        </button>
+                        <div class="dropdown-menu" id="profileDropdown">
+                            <a href="{% url 'profile' %}" class="dropdown-item">
+                                <i class="fas fa-user"></i> Profile
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'logout' %}" class="dropdown-item" style="color: var(--danger);">
+                                <i class="fas fa-sign-out-alt"></i> Log Out
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="page-content">
+                <!-- Flash Messages -->
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <i
+                        class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function toggleDropdown() {
+            document.getElementById('profileDropdown').classList.toggle('show');
+        }
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.profile-dropdown')) {
+                document.getElementById('profileDropdown').classList.remove('show');
+            }
+        });
+    </script>
+</body>
+
+</html>

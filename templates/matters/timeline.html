@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Timeline — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Timeline</h1><p>Activity log across all matters and tasks</p></div></div>
+<div class="card"><div class="card-body">
+<div class="timeline">
+{% for entry in entries %}
+<div class="timeline-item">
+    <div class="timeline-content">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ entry.user.username }}</strong>
+                <span class="badge {% if entry.action == 'created' %}badge-success{% elif entry.action == 'deleted' %}badge-danger{% elif entry.action == 'commented' %}badge-info{% elif entry.action == 'status_changed' %}badge-warning{% else %}badge-secondary{% endif %}" style="margin-left: 8px;">{{ entry.get_action_display }}</span>
+            </div>
+        </div>
+        <p style="margin-top: 4px; color: var(--text-secondary); font-size: 13px;">{{ entry.description }}</p>
+    </div>
+    <div class="timeline-time">{{ entry.timestamp|timesince }} ago</div>
+</div>
+{% empty %}
+<div class="empty-state"><i class="fas fa-stream"></i><h3>No activity yet</h3><p>Activity will appear here as users interact with matters and tasks.</p></div>
+{% endfor %}
+</div>
+</div></div>
+{% endblock %}

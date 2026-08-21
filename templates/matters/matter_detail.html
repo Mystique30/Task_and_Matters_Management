@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}{{ matter.title }} — TaskMatters{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'matter_list' %}">Matters</a> <span>/</span> <span>{{ matter.title }}</span>
+</div>
+
+<div class="detail-header">
+    <div>
+        <h1>{{ matter.title }}</h1>
+        <div class="detail-meta">
+            <div class="detail-meta-item">
+                <i class="fas fa-circle-dot"></i>
+                <span class="badge {% if matter.status == 'active' %}badge-info{% elif matter.status == 'completed' %}badge-success{% else %}badge-secondary{% endif %}">{{ matter.get_status_display }}</span>
+            </div>
+            <div class="detail-meta-item">
+                <i class="fas fa-flag"></i> {{ matter.get_priority_display }}
+            </div>
+            {% if matter.due_date %}
+            <div class="detail-meta-item">
+                <i class="fas fa-calendar"></i> Due: {{ matter.due_date|date:"M d, Y" }}
+                {% if matter.is_overdue %}<span class="badge badge-danger" style="margin-left: 4px;">Overdue</span>{% endif %}
+            </div>
+            {% endif %}
+            <div class="detail-meta-item">
+                <i class="fas fa-user"></i> Assigned: {{ matter.assigned_to.username|default:"Unassigned" }}
+            </div>
+            <div class="detail-meta-item">
+                <i class="fas fa-user-edit"></i> Created by: {{ matter.created_by.username }}
+            </div>
+        </div>
+    </div>
+    {% if request.user.profile.is_admin or request.user.profile.is_manager %}
+    <div class="detail-actions">
+        <a href="{% url 'matter_edit' matter.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</a>
+        <a href="{% url 'matter_delete' matter.id %}" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if matter.description %}
+<div class="card mb-3">
+    <div class="card-body">{{ matter.description|linebreaks }}</div>
+</div>
+{% endif %}
+
+<div class="grid-2">
+    <!-- Tasks -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Tasks ({{ tasks|length }})</h3>
+            {% if request.user.profile.is_admin or request.user.profile.is_manager %}
+            <a href="{% url 'task_create' %}?matter={{ matter.id }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Add Task</a>
+            {% endif %}
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% for task in tasks %}
+            <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <a href="{% url 'task_detail' task.id %}" style="font-weight: 500;">{{ task.title }}</a>
+                    <div style="font-size: 12px; color: var(--text-light);">{{ task.assigned_to.username|default:"Unassigned" }}</div>
+                </div>
+                <span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">{{ task.get_status_display }}</span>
+            </div>
+            {% empty %}
+            <div class="empty-state" style="padding: 30px;"><p>No tasks yet</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Documents -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Documents ({{ documents|length }})</h3>
+            <a href="{% url 'document_upload' %}?matter={{ matter.id }}" class="btn btn-sm btn-primary"><i class="fas fa-upload"></i> Upload</a>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% for doc in documents %}
+            <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <i class="fas fa-file" style="color: var(--primary); margin-right: 8px;"></i>
+                    <a href="{{ doc.file.url }}" target="_blank">{{ doc.title }}</a>
+                    <div style="font-size: 12px; color: var(--text-light);">{{ doc.uploaded_by.username }} · {{ doc.uploaded_at|timesince }} ago</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state" style="padding: 30px;"><p>No documents</p></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Comments -->
+<div class="card mt-3">
+    <div class="card-header"><h3>Comments ({{ comments|length }})</h3></div>
+    <div class="card-body">
+        {% for comment in comments %}
+        <div class="comment">
+            <div class="comment-avatar">{{ comment.author.username|first|upper }}</div>
+            <div class="comment-body">
+                <span class="comment-author">{{ comment.author.username }}</span>
+                <span class="comment-time">{{ comment.created_at|timesince }} ago</span>
+                <p class="comment-text">{{ comment.text }}</p>
+            </div>
+        </div>
+        {% empty %}
+        <p style="color: var(--text-light);">No comments yet.</p>
+        {% endfor %}
+
+        <form method="POST" action="{% url 'comment_add' %}" class="mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="matter_id" value="{{ matter.id }}">
+            {{ comment_form.text }}
+            <button type="submit" class="btn btn-primary btn-sm mt-1"><i class="fas fa-paper-plane"></i> Post Comment</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

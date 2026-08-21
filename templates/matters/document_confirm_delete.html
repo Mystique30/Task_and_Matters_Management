@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Delete Document — TaskMatters{% endblock %}
+{% block content %}
+<div class="confirm-delete"><div class="card"><div class="card-header"><h3 style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Delete Document</h3></div><div class="card-body"><p>Delete <strong>"{{ document.title }}"</strong>?</p><form method="POST" class="mt-2">{% csrf_token %}<div class="flex gap-1"><button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Yes, Delete</button><a href="{% url 'document_list' %}" class="btn btn-outline">Cancel</a></div></form></div></div></div>
+{% endblock %}

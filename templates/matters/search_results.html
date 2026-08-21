@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Search — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Search Results</h1>{% if query %}<p>Results for "{{ query }}"</p>{% endif %}</div></div>
+{% if query %}
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header"><h3>Matters ({{ matters|length }})</h3></div>
+        <div class="card-body" style="padding: 0;">
+            {% for m in matters %}
+            <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-light);">
+                <a href="{% url 'matter_detail' m.id %}" style="font-weight: 500;">{{ m.title }}</a>
+                <span class="badge {% if m.status == 'active' %}badge-info{% elif m.status == 'completed' %}badge-success{% else %}badge-secondary{% endif %}" style="margin-left: 8px;">{{ m.get_status_display }}</span>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">{{ m.description|truncatechars:80 }}</p>
+            </div>
+            {% empty %}<div class="empty-state" style="padding: 30px;"><p>No matters found</p></div>{% endfor %}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Tasks ({{ tasks|length }})</h3></div>
+        <div class="card-body" style="padding: 0;">
+            {% for t in tasks %}
+            <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-light);">
+                <a href="{% url 'task_detail' t.id %}" style="font-weight: 500;">{{ t.title }}</a>
+                <span class="badge {% if t.status == 'todo' %}badge-info{% elif t.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}" style="margin-left: 8px;">{{ t.get_status_display }}</span>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">{{ t.description|truncatechars:80 }}</p>
+            </div>
+            {% empty %}<div class="empty-state" style="padding: 30px;"><p>No tasks found</p></div>{% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><i class="fas fa-search"></i><h3>Enter a search term</h3><p>Use the search bar above to find matters and tasks.</p></div></div>
+{% endif %}
+{% endblock %}

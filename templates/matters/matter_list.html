@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Matters — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Matters</h1>
+        <p>Manage all your matters and projects</p>
+    </div>
+    {% if request.user.profile.is_admin or request.user.profile.is_manager %}
+    <a href="{% url 'matter_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Matter</a>
+    {% endif %}
+</div>
+
+<div class="filters">
+    <a href="{% url 'matter_list' %}" class="filter-btn {% if not status_filter %}active{% endif %}">All</a>
+    <a href="{% url 'matter_list' %}?status=active" class="filter-btn {% if status_filter == 'active' %}active{% endif %}">Active</a>
+    <a href="{% url 'matter_list' %}?status=completed" class="filter-btn {% if status_filter == 'completed' %}active{% endif %}">Completed</a>
+    <a href="{% url 'matter_list' %}?status=on_hold" class="filter-btn {% if status_filter == 'on_hold' %}active{% endif %}">On Hold</a>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assigned To</th>
+                    <th>Due Date</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for matter in matters %}
+                <tr>
+                    <td><a href="{% url 'matter_detail' matter.id %}" style="font-weight: 500;">{{ matter.title }}</a></td>
+                    <td>
+                        <span class="badge {% if matter.status == 'active' %}badge-info{% elif matter.status == 'completed' %}badge-success{% else %}badge-secondary{% endif %}">
+                            {{ matter.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="priority-{{ matter.priority }}">{{ matter.get_priority_display }}</span>
+                    </td>
+                    <td>{{ matter.assigned_to.username|default:"—" }}</td>
+                    <td>
+                        {% if matter.due_date %}
+                            {% if matter.is_overdue %}<span style="color: var(--danger); font-weight: 600;">{% endif %}
+                            {{ matter.due_date|date:"M d, Y" }}
+                            {% if matter.is_overdue %}</span>{% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ matter.created_by.username }}</td>
+                    <td>
+                        <div class="flex gap-1">
+                            <a href="{% url 'matter_detail' matter.id %}" class="btn btn-sm btn-outline" title="View"><i class="fas fa-eye"></i></a>
+                            {% if request.user.profile.is_admin or request.user.profile.is_manager %}
+                            <a href="{% url 'matter_edit' matter.id %}" class="btn btn-sm btn-outline" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'matter_delete' matter.id %}" class="btn btn-sm btn-outline" title="Delete" style="color: var(--danger);"><i class="fas fa-trash"></i></a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center" style="padding: 40px; color: var(--text-light);">No matters found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

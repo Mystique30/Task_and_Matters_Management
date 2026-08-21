@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Reports — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Reports</h1><p>Overview of system statistics</p></div></div>
+
+<div class="grid-2">
+    <!-- Matters Stats -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-briefcase" style="color: var(--primary); margin-right: 8px;"></i>Matters Overview</h3></div>
+        <div class="card-body">
+            <div class="report-section">
+                <div class="report-bar"><span class="report-bar-label">Active</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio active_matters total_matters 100 %}%; background: var(--info);"></div></div><span class="report-bar-value">{{ active_matters }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">Completed</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio completed_matters total_matters 100 %}%; background: var(--success);"></div></div><span class="report-bar-value">{{ completed_matters }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">On Hold</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio on_hold_matters total_matters 100 %}%; background: var(--text-light);"></div></div><span class="report-bar-value">{{ on_hold_matters }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">Overdue</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio overdue_matters total_matters 100 %}%; background: var(--danger);"></div></div><span class="report-bar-value">{{ overdue_matters }}</span></div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: var(--border-light); border-radius: var(--radius); margin-top: 16px;">
+                <span style="font-size: 28px; font-weight: 700;">{{ total_matters }}</span><br><span style="color: var(--text-secondary); font-size: 13px;">Total Matters</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasks Stats -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-tasks" style="color: var(--success); margin-right: 8px;"></i>Tasks Overview</h3></div>
+        <div class="card-body">
+            <div class="report-section">
+                <div class="report-bar"><span class="report-bar-label">To Do</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio todo_tasks total_tasks 100 %}%; background: var(--info);"></div></div><span class="report-bar-value">{{ todo_tasks }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">In Progress</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio in_progress_tasks total_tasks 100 %}%; background: var(--warning);"></div></div><span class="report-bar-value">{{ in_progress_tasks }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">Completed</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio completed_tasks total_tasks 100 %}%; background: var(--success);"></div></div><span class="report-bar-value">{{ completed_tasks }}</span></div>
+                <div class="report-bar"><span class="report-bar-label">Overdue</span><div class="report-bar-track"><div class="report-bar-fill" style="width: {% widthratio overdue_tasks total_tasks 100 %}%; background: var(--danger);"></div></div><span class="report-bar-value">{{ overdue_tasks }}</span></div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: var(--border-light); border-radius: var(--radius); margin-top: 16px;">
+                <span style="font-size: 28px; font-weight: 700;">{{ total_tasks }}</span><br><span style="color: var(--text-secondary); font-size: 13px;">Total Tasks</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users & Content Stats -->
+<div class="grid-3 mt-3">
+    <div class="card">
+        <div class="card-header"><h3>Users by Role</h3></div>
+        <div class="card-body">
+            <div class="report-bar"><span class="report-bar-label">Admins</span><div class="report-bar-track"><div class="report-bar-fill" style="width: 100%; background: var(--danger);"></div></div><span class="report-bar-value">{{ users_by_role.admins }}</span></div>
+            <div class="report-bar"><span class="report-bar-label">Managers</span><div class="report-bar-track"><div class="report-bar-fill" style="width: 100%; background: var(--warning);"></div></div><span class="report-bar-value">{{ users_by_role.managers }}</span></div>
+            <div class="report-bar"><span class="report-bar-label">Members</span><div class="report-bar-track"><div class="report-bar-fill" style="width: 100%; background: var(--info);"></div></div><span class="report-bar-value">{{ users_by_role.members }}</span></div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Content</h3></div>
+        <div class="card-body">
+            <div style="display: flex; justify-content: space-around; text-align: center;">
+                <div><span style="font-size: 28px; font-weight: 700; color: var(--primary);">{{ total_documents }}</span><br><span style="font-size: 13px; color: var(--text-secondary);">Documents</span></div>
+                <div><span style="font-size: 28px; font-weight: 700; color: var(--success);">{{ total_comments }}</span><br><span style="font-size: 13px; color: var(--text-secondary);">Comments</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Quick Links</h3></div>
+        <div class="card-body">
+            <a href="{% url 'matter_list' %}?status=active" class="btn btn-outline btn-sm mb-1" style="width: 100%;"><i class="fas fa-briefcase"></i> Active Matters</a>
+            <a href="{% url 'task_list' %}?status=todo" class="btn btn-outline btn-sm mb-1" style="width: 100%;"><i class="fas fa-tasks"></i> Pending Tasks</a>
+            <a href="{% url 'timeline' %}" class="btn btn-outline btn-sm" style="width: 100%;"><i class="fas fa-stream"></i> View Timeline</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

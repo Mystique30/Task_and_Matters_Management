@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Reminders — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Reminders</h1><p>Your upcoming reminders</p></div><a href="{% url 'reminder_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Reminder</a></div>
+<div class="card"><div class="table-container"><table>
+<thead><tr><th>Title</th><th>Due Date</th><th>Matter</th><th>Task</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody>{% for r in reminders %}<tr>
+<td style="font-weight: 500;">{{ r.title }}</td>
+<td>{% if r.is_overdue %}<span style="color: var(--danger); font-weight: 600;">{% endif %}{{ r.due_date|date:"M d, Y H:i" }}{% if r.is_overdue %}</span>{% endif %}</td>
+<td>{% if r.matter %}{{ r.matter.title }}{% else %}—{% endif %}</td>
+<td>{% if r.task %}{{ r.task.title }}{% else %}—{% endif %}</td>
+<td><span class="badge {% if r.is_completed %}badge-success{% elif r.is_overdue %}badge-danger{% else %}badge-warning{% endif %}">{% if r.is_completed %}Completed{% elif r.is_overdue %}Overdue{% else %}Pending{% endif %}</span></td>
+<td><div class="flex gap-1">{% if not r.is_completed %}<a href="{% url 'reminder_complete' r.id %}" class="btn btn-sm btn-success"><i class="fas fa-check"></i></a>{% endif %}<a href="{% url 'reminder_delete' r.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);"><i class="fas fa-trash"></i></a></div></td>
+</tr>{% empty %}<tr><td colspan="6" class="text-center" style="padding: 40px; color: var(--text-light);">No reminders.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

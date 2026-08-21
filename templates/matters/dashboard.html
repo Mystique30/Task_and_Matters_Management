@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — TaskMatters{% endblock %}
+
+{% block content %}
+<!-- Legend Bar -->
+<div class="dash-legend">
+    <div class="dash-legend-items">
+        <span class="legend-dot">
+            <span class="dot blue"></span> Active Matters
+        </span>
+        <span class="legend-dot">
+            <span class="dot orange"></span> Due This Week
+        </span>
+        <span class="legend-dot">
+            <span class="dot red"></span> Overdue Tasks
+        </span>
+    </div>
+    <button class="dash-legend-menu" id="dashMenuBtn" type="button" title="Options">
+        <i class="fas fa-bars"></i>
+    </button>
+</div>
+
+<!-- Top Row: Active Matters · Matters Due · Overdue -->
+<div class="dash-grid">
+    <!-- 1. Active Matters -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator blue"></span>
+                <h3>Active Matters</h3>
+            </div>
+            <span class="dash-card-count">{{ active_matters }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for matter in active_matters_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
+                    <span>{% if matter.due_date %}Due: {{ matter.due_date|date:"M d, Y" }}{% else %}No due date{% endif %}</span>
+                </div>
+                <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% empty %}
+            <div class="dash-card-empty">
+                <i class="fas fa-briefcase"></i>
+                <span>No active matters</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 2. Matters Due -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator orange"></span>
+                <h3>Matters Due</h3>
+            </div>
+            <span class="dash-card-count">{{ matters_due }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for matter in matters_due_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
+                    <span>Due: {{ matter.due_date|date:"M d, Y" }}</span>
+                </div>
+                <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% empty %}
+            <div class="dash-card-empty">
+                <i class="fas fa-clock"></i>
+                <span>Nothing due this week</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 3. Overdue -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator red"></span>
+                <h3>Overdue</h3>
+            </div>
+            <span class="dash-card-count">{{ overdue_count }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for task in overdue_tasks_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
+                    <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
+                </div>
+                <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% endfor %}
+            {% for matter in overdue_matters_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
+                    <span>Due: {{ matter.due_date|date:"M d, Y" }}</span>
+                </div>
+                <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% endfor %}
+            {% if not overdue_tasks_list and not overdue_matters_list %}
+            <div class="dash-card-empty">
+                <i class="fas fa-check-circle"></i>
+                <span>Nothing overdue</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 4. Upcoming Tasks -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator green"></span>
+                <h3>Upcoming Tasks</h3>
+            </div>
+            <span class="dash-card-count">{{ upcoming_tasks }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for task in upcoming_tasks_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
+                    <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
+                </div>
+                <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% empty %}
+            <div class="dash-card-empty">
+                <i class="fas fa-calendar-check"></i>
+                <span>No upcoming tasks</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 5. Recent Updates -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator purple"></span>
+                <h3>Recent Updates</h3>
+            </div>
+            <span class="dash-card-count">{{ recent_updates|length }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for entry in recent_updates|slice:":5" %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <span class="dash-update-desc">{{ entry.description|truncatechars:32 }}</span>
+                    <span>{{ entry.user.username }} · {{ entry.timestamp|timesince }} ago</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="dash-card-empty">
+                <i class="fas fa-history"></i>
+                <span>No recent activity</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 6. Personal Tasks -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <div class="dash-card-title">
+                <span class="dash-card-indicator blue"></span>
+                <h3>Personal Tasks</h3>
+            </div>
+            <span class="dash-card-count">{{ personal_tasks }}</span>
+        </div>
+        <div class="dash-card-body">
+            {% for task in personal_tasks_list %}
+            <div class="dash-card-item">
+                <div class="dash-card-item-info">
+                    <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
+                    <span>{% if task.due_date %}Due: {{ task.due_date|date:"M d, Y" }}{% else %}No due date{% endif %}</span>
+                </div>
+                <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
+                    <i class="fas fa-pen"></i>
+                </a>
+            </div>
+            {% empty %}
+            <div class="dash-card-empty">
+                <i class="fas fa-user-check"></i>
+                <span>No personal tasks</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

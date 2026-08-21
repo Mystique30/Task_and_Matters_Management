@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — TaskMatters{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'matter_list' %}">Matters</a> <span>/</span> <span>{{ title }}</span>
+</div>
+<div class="card" style="max-width: 640px;">
+    <div class="card-header"><h3>{{ title }}</h3></div>
+    <div class="card-body">
+        <form method="POST">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="form-help" style="color: var(--danger);">{{ field.errors.0 }}</div>{% endif %}
+            </div>
+            {% endfor %}
+            <div class="flex gap-1 mt-2">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                <a href="{% url 'matter_list' %}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

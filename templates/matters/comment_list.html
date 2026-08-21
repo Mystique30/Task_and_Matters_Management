@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Comments — TaskMatters{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Comments</h1><p>All comments across matters and tasks</p></div></div>
+<div class="card"><div class="card-body">
+{% for comment in comments %}
+<div class="comment">
+    <div class="comment-avatar">{{ comment.author.username|first|upper }}</div>
+    <div class="comment-body">
+        <span class="comment-author">{{ comment.author.username }}</span>
+        <span class="comment-time">{{ comment.created_at|timesince }} ago</span>
+        {% if comment.matter %}<span class="badge badge-primary" style="margin-left: 8px;">{{ comment.matter.title }}</span>{% endif %}
+        {% if comment.task %}<span class="badge badge-info" style="margin-left: 8px;">{{ comment.task.title }}</span>{% endif %}
+        <p class="comment-text">{{ comment.text }}</p>
+    </div>
+</div>
+{% empty %}<div class="empty-state"><i class="fas fa-comments"></i><h3>No comments yet</h3><p>Comments will appear here when users add them to matters or tasks.</p></div>{% endfor %}
+</div></div>
+{% endblock %}
