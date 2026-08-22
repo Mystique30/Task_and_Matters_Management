@@ -1,12 +1,7 @@
-/* ============================================
-   TASK & MATTERS MANAGEMENT — STYLESHEET
-   Clean white theme with modern design
-   ============================================ */
 
-/* --- Google Font --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* --- CSS Variables (Design Tokens) --- */
+
 :root {
     --bg-page: #f5f7fa;
     --bg-white: #ffffff;
@@ -72,9 +67,9 @@ a:hover {
     color: var(--primary-hover);
 }
 
-/* ============================================
-   LAYOUT — Sidebar + Topbar + Content
-   ============================================ */
+
+ /*  Dashboard Content - Sidebar + Topbar + Content */
+   
 
 .layout {
     display: flex;
