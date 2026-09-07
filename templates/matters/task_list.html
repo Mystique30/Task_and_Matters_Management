@@ -30,8 +30,10 @@
                         <div class="flex gap-1">
                             <a href="{% url 'task_detail' task.id %}" class="btn btn-sm btn-outline"><i class="fas fa-eye"></i></a>
                             {% if request.user.profile.is_admin or request.user.profile.is_manager %}
-                            <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></a>
-                            <a href="{% url 'task_delete' task.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);"><i class="fas fa-trash"></i></a>
+                            <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'task_delete' task.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);" title="Delete"><i class="fas fa-trash"></i></a>
+                            {% elif task.assigned_to == request.user %}
+                            <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline" title="Edit Status"><i class="fas fa-edit"></i></a>
                             {% endif %}
                         </div>
                     </td>

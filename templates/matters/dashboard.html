@@ -38,9 +38,11 @@
                     <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
                     <span>{% if matter.due_date %}Due: {{ matter.due_date|date:"M d, Y" }}{% else %}No due date{% endif %}</span>
                 </div>
+                {% if request.user.profile.is_admin or request.user.profile.is_manager %}
                 <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
+                {% endif %}
             </div>
             {% empty %}
             <div class="dash-card-empty">
@@ -67,9 +69,11 @@
                     <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
                     <span>Due: {{ matter.due_date|date:"M d, Y" }}</span>
                 </div>
+                {% if request.user.profile.is_admin or request.user.profile.is_manager %}
                 <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
+                {% endif %}
             </div>
             {% empty %}
             <div class="dash-card-empty">
@@ -96,9 +100,11 @@
                     <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
                     <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
                 </div>
+                {% if request.user.profile.is_admin or request.user.profile.is_manager or task.assigned_to == request.user %}
                 <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
+                {% endif %}
             </div>
             {% endfor %}
             {% for matter in overdue_matters_list %}
@@ -107,9 +113,11 @@
                     <a href="{% url 'matter_detail' matter.id %}">{{ matter.title|truncatechars:28 }}</a>
                     <span>Due: {{ matter.due_date|date:"M d, Y" }}</span>
                 </div>
+                {% if request.user.profile.is_admin or request.user.profile.is_manager %}
                 <a href="{% url 'matter_edit' matter.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
+                {% endif %}
             </div>
             {% endfor %}
             {% if not overdue_tasks_list and not overdue_matters_list %}
@@ -137,9 +145,11 @@
                     <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
                     <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
                 </div>
+                {% if request.user.profile.is_admin or request.user.profile.is_manager or task.assigned_to == request.user %}
                 <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
+                {% endif %}
             </div>
             {% empty %}
             <div class="dash-card-empty">

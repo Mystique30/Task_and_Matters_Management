@@ -16,12 +16,14 @@
             <div class="detail-meta-item"><i class="fas fa-user-edit"></i> Created by: {{ task.created_by.username }}</div>
         </div>
     </div>
-    {% if request.user.profile.is_admin or request.user.profile.is_manager %}
     <div class="detail-actions">
+        {% if request.user.profile.is_admin or request.user.profile.is_manager %}
         <a href="{% url 'task_edit' task.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</a>
         <a href="{% url 'task_delete' task.id %}" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</a>
+        {% elif task.assigned_to == request.user %}
+        <a href="{% url 'task_edit' task.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit Status</a>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% if task.description %}<div class="card mb-3"><div class="card-body">{{ task.description|linebreaks }}</div></div>{% endif %}
 <div class="grid-2">

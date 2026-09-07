@@ -2,13 +2,57 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
 from datetime import timedelta
 
 from accounts.decorators import login_required_custom, manager_or_admin_required
 from .models import Matter, Task, Document, Comment, Reminder, Notification, TimelineEntry
-from .forms import MatterForm, TaskForm, DocumentForm, CommentForm, ReminderForm
+from .forms import MatterForm, TaskForm, MemberTaskStatusForm, DocumentForm, CommentForm, ReminderForm
 from .utils import log_timeline, send_notification
+
+
+# ============================================================
+# AUTHORIZATION & QUERY FILTER HELPERS
+# ============================================================
+
+def get_user_matters_qs(user):
+    """
+    Returns the queryset of Matters visible to the given user:
+    - Admin: All matters.
+    - Manager: Only matters assigned to that manager (or created by them with no other manager assigned).
+               Manager 1 must not see matters assigned to Manager 2, and vice versa.
+    - Member: Only matters containing tasks assigned to that member.
+    """
+    profile = getattr(user, 'profile', None)
+    if not profile or profile.is_admin:
+        return Matter.objects.all()
+    elif profile.is_manager:
+        return Matter.objects.filter(
+            Q(assigned_to=user) | Q(created_by=user, assigned_to__isnull=True)
+        ).distinct()
+    else:  # member
+        return Matter.objects.filter(tasks__assigned_to=user).distinct()
+
+
+def get_user_tasks_qs(user):
+    """
+    Returns the queryset of Tasks visible to the given user:
+    - Admin: All tasks.
+    - Manager: Only tasks within matters assigned to that manager, or tasks assigned directly to that manager.
+               Manager 1 must not see matters/tasks assigned to Manager 2, and vice versa.
+    - Member: Strictly only tasks assigned to themselves.
+    """
+    profile = getattr(user, 'profile', None)
+    if not profile or profile.is_admin:
+        return Task.objects.all()
+    elif profile.is_manager:
+        return Task.objects.filter(
+            Q(matter__assigned_to=user) |
+            Q(assigned_to=user) |
+            Q(created_by=user, matter__assigned_to__isnull=True, matter__isnull=True)
+        ).distinct()
+    else:  # member
+        return Task.objects.filter(assigned_to=user)
 
 
 # ============================================================
@@ -19,67 +63,76 @@ from .utils import log_timeline, send_notification
 def dashboard_view(request):
     """
     Main dashboard with 6 summary cards.
-    Shows different data based on user role.
+    Shows different data based on user role and assignments.
     """
     today = timezone.now().date()
     week_from_now = today + timedelta(days=7)
     user = request.user
 
+    profile = getattr(user, 'profile', None)
+
+    # Scoped querysets based on authorization rules
+    matters_qs = get_user_matters_qs(user)
+    tasks_qs = get_user_tasks_qs(user)
+
     # Counts for the 6 dashboard cards
-    active_matters = Matter.objects.filter(status='active').count()
-    matters_due = Matter.objects.filter(
+    active_matters = matters_qs.filter(status='active').count()
+    matters_due = matters_qs.filter(
         due_date__lte=week_from_now,
         due_date__gte=today,
         status='active'
     ).count()
-    overdue_matters = Matter.objects.filter(
+    overdue_matters = matters_qs.filter(
         due_date__lt=today,
         status='active'
     ).count()
-    overdue_tasks = Task.objects.filter(
+    overdue_tasks = tasks_qs.filter(
         due_date__lt=today
     ).exclude(status='completed').count()
-    upcoming_tasks = Task.objects.filter(
+    upcoming_tasks = tasks_qs.filter(
         due_date__gte=today,
         due_date__lte=week_from_now
     ).exclude(status='completed').count()
-    personal_tasks = Task.objects.filter(
+    personal_tasks = tasks_qs.filter(
         assigned_to=user
     ).exclude(status='completed').count()
 
     # Lists for dashboard cards
-    active_matters_list = Matter.objects.filter(
+    active_matters_list = matters_qs.filter(
         status='active'
     ).select_related('assigned_to')[:5]
 
-    matters_due_list = Matter.objects.filter(
+    matters_due_list = matters_qs.filter(
         due_date__lte=week_from_now,
         due_date__gte=today,
         status='active'
     ).select_related('assigned_to')[:5]
 
-    overdue_tasks_list = Task.objects.filter(
+    overdue_tasks_list = tasks_qs.filter(
         due_date__lt=today
     ).exclude(status='completed').select_related('assigned_to', 'matter')[:5]
 
-    overdue_matters_list = Matter.objects.filter(
+    overdue_matters_list = matters_qs.filter(
         due_date__lt=today,
         status='active'
     ).select_related('assigned_to')[:5]
 
-    # Recent updates (last 10 timeline entries)
-    recent_updates = TimelineEntry.objects.select_related(
-        'user', 'matter', 'task'
-    )[:10]
+    # Recent updates (last 10 timeline entries scoped to visible items)
+    if not profile or profile.is_admin:
+        recent_updates = TimelineEntry.objects.select_related('user', 'matter', 'task')[:10]
+    else:
+        recent_updates = TimelineEntry.objects.filter(
+            Q(task__in=tasks_qs) | Q(matter__in=matters_qs) | Q(user=user)
+        ).distinct().select_related('user', 'matter', 'task')[:10]
 
     # Upcoming tasks list
-    upcoming_tasks_list = Task.objects.filter(
+    upcoming_tasks_list = tasks_qs.filter(
         due_date__gte=today,
         due_date__lte=week_from_now
     ).exclude(status='completed').select_related('assigned_to', 'matter')[:5]
 
     # Personal tasks list
-    personal_tasks_list = Task.objects.filter(
+    personal_tasks_list = tasks_qs.filter(
         assigned_to=user
     ).exclude(status='completed').select_related('matter')[:5]
 
@@ -115,6 +168,8 @@ def dashboard_task_status_update(request, task_id):
     from django.http import JsonResponse
 
     task = get_object_or_404(Task, id=task_id)
+    if not get_user_tasks_qs(request.user).filter(id=task.id).exists():
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
     if request.method == 'POST':
         new_status = request.POST.get('status', '')
@@ -152,7 +207,7 @@ def dashboard_task_status_update(request, task_id):
 def matter_list_view(request):
     """List all matters with optional status filter."""
     status_filter = request.GET.get('status', '')
-    matters = Matter.objects.select_related('assigned_to', 'created_by')
+    matters = get_user_matters_qs(request.user).select_related('assigned_to', 'created_by')
 
     if status_filter:
         matters = matters.filter(status=status_filter)
@@ -197,7 +252,15 @@ def matter_create_view(request):
 def matter_detail_view(request, matter_id):
     """View matter details with its tasks, comments, and documents."""
     matter = get_object_or_404(Matter, id=matter_id)
-    tasks = matter.tasks.select_related('assigned_to')
+
+    # Authorization check: user must be permitted to see this matter
+    if not get_user_matters_qs(request.user).filter(id=matter.id).exists():
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('matter_list')
+
+    # Tasks within this matter visible to current user
+    tasks = get_user_tasks_qs(request.user).filter(matter=matter).select_related('assigned_to')
+
     comments = matter.comments.select_related('author')
     documents = matter.documents.select_related('uploaded_by')
     comment_form = CommentForm()
@@ -215,6 +278,11 @@ def matter_detail_view(request, matter_id):
 def matter_edit_view(request, matter_id):
     """Edit a matter (Admin/Manager only)."""
     matter = get_object_or_404(Matter, id=matter_id)
+
+    if not get_user_matters_qs(request.user).filter(id=matter.id).exists():
+        messages.error(request, 'You do not have permission to edit this matter.')
+        return redirect('matter_list')
+
     form = MatterForm(instance=matter)
 
     if request.method == 'POST':
@@ -237,6 +305,10 @@ def matter_delete_view(request, matter_id):
     """Delete a matter with confirmation (Admin/Manager only)."""
     matter = get_object_or_404(Matter, id=matter_id)
 
+    if not get_user_matters_qs(request.user).filter(id=matter.id).exists():
+        messages.error(request, 'You do not have permission to delete this matter.')
+        return redirect('matter_list')
+
     if request.method == 'POST':
         title = matter.title
         log_timeline(request.user, 'deleted', f'Deleted matter: {title}')
@@ -255,7 +327,7 @@ def matter_delete_view(request, matter_id):
 def task_list_view(request):
     """List all tasks with optional filters."""
     status_filter = request.GET.get('status', '')
-    tasks = Task.objects.select_related('assigned_to', 'created_by', 'matter')
+    tasks = get_user_tasks_qs(request.user).select_related('assigned_to', 'created_by', 'matter')
 
     if status_filter:
         tasks = tasks.filter(status=status_filter)
@@ -309,6 +381,12 @@ def task_create_view(request):
 def task_detail_view(request, task_id):
     """View task details with comments and documents."""
     task = get_object_or_404(Task, id=task_id)
+
+    # Authorization check: task must be visible to current user
+    if not get_user_tasks_qs(request.user).filter(id=task.id).exists():
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('task_list')
+
     comments = task.comments.select_related('author')
     documents = task.documents.select_related('uploaded_by')
     comment_form = CommentForm()
@@ -321,14 +399,35 @@ def task_detail_view(request, task_id):
     })
 
 
-@manager_or_admin_required
+@login_required_custom
 def task_edit_view(request, task_id):
-    """Edit a task (Admin/Manager only)."""
+    """
+    Edit a task.
+    - Admins and Managers can edit all fields of authorized tasks.
+    - Members can only edit the status of tasks assigned to them.
+    """
     task = get_object_or_404(Task, id=task_id)
-    form = TaskForm(instance=task)
+
+    # Authorization check: user must be permitted to view and edit this task
+    if not get_user_tasks_qs(request.user).filter(id=task.id).exists():
+        messages.error(request, 'You do not have permission to edit this task.')
+        return redirect('task_list')
+
+    profile = getattr(request.user, 'profile', None)
+    is_admin_or_mgr = profile and (profile.is_admin or profile.is_manager)
+    is_assigned_member = (task.assigned_to == request.user)
+
+    # If the user is a Member, ensure the task is assigned to them
+    if not is_admin_or_mgr:
+        if not is_assigned_member:
+            messages.error(request, 'You do not have permission to edit this task.')
+            return redirect('task_list')
+
+    # Choose form: Admins/Managers get the full form; Members get only the status field
+    form_class = TaskForm if is_admin_or_mgr else MemberTaskStatusForm
 
     if request.method == 'POST':
-        form = TaskForm(request.POST, instance=task)
+        form = form_class(request.POST, instance=task)
         if form.is_valid():
             old_status = Task.objects.get(id=task_id).status
             task = form.save()
@@ -336,7 +435,7 @@ def task_edit_view(request, task_id):
             if old_status != task.status:
                 log_timeline(
                     request.user, 'status_changed',
-                    f'Changed task "{task.title}" status from {old_status} to {task.status}',
+                    f'Changed task "{task.title}" status from {old_status} to {task.get_status_display()}',
                     matter=task.matter, task=task
                 )
             else:
@@ -348,11 +447,16 @@ def task_edit_view(request, task_id):
 
             messages.success(request, 'Task updated successfully.')
             return redirect('task_detail', task_id=task.id)
+    else:
+        form = form_class(instance=task)
+
+    title = f'Edit Task: {task.title}' if is_admin_or_mgr else f'Update Status: {task.title}'
 
     return render(request, 'matters/task_form.html', {
         'form': form,
-        'title': f'Edit Task: {task.title}',
+        'title': title,
         'task': task,
+        'is_member_edit': not is_admin_or_mgr,
     })
 
 
@@ -360,6 +464,10 @@ def task_edit_view(request, task_id):
 def task_delete_view(request, task_id):
     """Delete a task with confirmation (Admin/Manager only)."""
     task = get_object_or_404(Task, id=task_id)
+
+    if not get_user_tasks_qs(request.user).filter(id=task.id).exists():
+        messages.error(request, 'You do not have permission to delete this task.')
+        return redirect('task_list')
 
     if request.method == 'POST':
         title = task.title
@@ -538,9 +646,35 @@ def reminder_delete_view(request, reminder_id):
 
 @login_required_custom
 def timeline_view(request):
-    """Show activity timeline."""
-    entries = TimelineEntry.objects.select_related('user', 'matter', 'task')[:50]
-    return render(request, 'matters/timeline.html', {'entries': entries})
+    """
+    Show activity timeline organized into Matter cards.
+    Each Matter card contains its tasks.
+    Clicking any task reveals the chronological timeline of what was done throughout that task.
+    Strictly isolated: managers only see their own assigned matters, tasks, and changes.
+    """
+    user = request.user
+    user_matters = get_user_matters_qs(user).order_by('-created_at')
+    user_tasks = get_user_tasks_qs(user).order_by('due_date', 'id')
+
+    # Prefetch timeline entries for tasks visible to this user
+    task_timeline_prefetch = Prefetch(
+        'timeline_entries',
+        queryset=TimelineEntry.objects.select_related('user').order_by('-timestamp')
+    )
+
+    # Prefetch tasks within each matter
+    tasks_prefetch = Prefetch(
+        'tasks',
+        queryset=user_tasks.select_related('assigned_to').prefetch_related(task_timeline_prefetch)
+    )
+
+    matters = user_matters.prefetch_related(
+        tasks_prefetch
+    ).select_related('assigned_to', 'created_by')
+
+    return render(request, 'matters/timeline.html', {
+        'matters': matters,
+    })
 
 
 # ============================================================
@@ -555,10 +689,10 @@ def search_view(request):
     tasks = []
 
     if query:
-        matters = Matter.objects.filter(
+        matters = get_user_matters_qs(request.user).filter(
             Q(title__icontains=query) | Q(description__icontains=query)
         ).select_related('assigned_to')
-        tasks = Task.objects.filter(
+        tasks = get_user_tasks_qs(request.user).filter(
             Q(title__icontains=query) | Q(description__icontains=query)
         ).select_related('assigned_to', 'matter')
 

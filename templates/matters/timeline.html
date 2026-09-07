@@ -1,25 +1,167 @@
 {% extends 'base.html' %}
 {% block title %}Timeline — TaskMatters{% endblock %}
+
 {% block content %}
-<div class="page-header"><div><h1>Timeline</h1><p>Activity log across all matters and tasks</p></div></div>
-<div class="card"><div class="card-body">
-<div class="timeline">
-{% for entry in entries %}
-<div class="timeline-item">
-    <div class="timeline-content">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>{{ entry.user.username }}</strong>
-                <span class="badge {% if entry.action == 'created' %}badge-success{% elif entry.action == 'deleted' %}badge-danger{% elif entry.action == 'commented' %}badge-info{% elif entry.action == 'status_changed' %}badge-warning{% else %}badge-secondary{% endif %}" style="margin-left: 8px;">{{ entry.get_action_display }}</span>
-            </div>
-        </div>
-        <p style="margin-top: 4px; color: var(--text-secondary); font-size: 13px;">{{ entry.description }}</p>
+<div class="timeline-page-header">
+    <div class="timeline-header-text">
+        <h1>Timeline</h1>
+        <p>Activity timeline organized by Matter and Task</p>
     </div>
-    <div class="timeline-time">{{ entry.timestamp|timesince }} ago</div>
+    <div class="timeline-header-actions">
+        <div class="timeline-search">
+            <i class="fas fa-search"></i>
+            <input type="text" id="timelineFilter" placeholder="Filter matters or tasks..." onkeyup="filterTimeline()">
+        </div>
+        <button type="button" class="timeline-btn" onclick="expandAll()">
+            <i class="fas fa-expand-alt"></i> Expand All
+        </button>
+        <button type="button" class="timeline-btn" onclick="collapseAll()">
+            <i class="fas fa-compress-alt"></i> Collapse All
+        </button>
+    </div>
 </div>
-{% empty %}
-<div class="empty-state"><i class="fas fa-stream"></i><h3>No activity yet</h3><p>Activity will appear here as users interact with matters and tasks.</p></div>
-{% endfor %}
+
+{% if matters %}
+<div class="matter-cards-container" id="matterCardsGrid">
+    {% for matter in matters %}
+    <div class="matter-card" data-title="{{ matter.title|lower }}">
+        <!-- Matter Card Top -->
+        <div class="matter-card-top">
+            <div class="matter-card-heading">
+                <span class="matter-indicator {% if matter.status == 'active' %}blue{% elif matter.status == 'pending' %}orange{% else %}gray{% endif %}"></span>
+                <a href="{% url 'matter_detail' matter.id %}" class="matter-name">{{ matter.title }}</a>
+            </div>
+            <span class="matter-status-pill {{ matter.status }}">{{ matter.get_status_display }}</span>
+        </div>
+
+        <div class="matter-card-sub">
+            <span><i class="fas fa-user-tie"></i> {{ matter.assigned_to.get_full_name|default:matter.assigned_to.username|default:"Unassigned" }}</span>
+            {% if matter.due_date %}
+            <span><i class="far fa-calendar"></i> Due {{ matter.due_date|date:"M d, Y" }}</span>
+            {% endif %}
+            <span><i class="fas fa-check-square"></i> {{ matter.tasks.all|length }} task{{ matter.tasks.all|length|pluralize }}</span>
+        </div>
+
+        <!-- Task List -->
+        <div class="matter-task-list">
+            {% for task in matter.tasks.all %}
+            <div class="task-node" data-task-name="{{ task.title|lower }}">
+                <div class="task-row" onclick="toggleTaskTimeline('task-tl-{{ task.id }}', this)">
+                    <div class="task-row-left">
+                        <span class="task-dot {{ task.status }}"></span>
+                        <span class="task-name">{{ task.title }}</span>
+                    </div>
+                    <div class="task-row-right">
+                        <span class="task-badge {{ task.status }}">{{ task.get_status_display }}</span>
+                        {% if task.assigned_to %}
+                        <span class="task-member" title="Assigned Member">
+                            <i class="fas fa-user"></i> {{ task.assigned_to.username }}
+                        </span>
+                        {% endif %}
+                        <span class="task-count" title="{{ task.timeline_entries.all|length }} activities">
+                            {{ task.timeline_entries.all|length }}
+                        </span>
+                        <i class="fas fa-chevron-down task-chevron"></i>
+                    </div>
+                </div>
+
+                <!-- Expanded Timeline Stream for this Task -->
+                <div id="task-tl-{{ task.id }}" class="task-stream" style="display: none;">
+                    <div class="stream-line">
+                        {% for entry in task.timeline_entries.all %}
+                        <div class="stream-item">
+                            <div class="stream-dot dot-{{ entry.action }}"></div>
+                            <div class="stream-body">
+                                <div class="stream-meta">
+                                    <span class="stream-user">{{ entry.user.username }}</span>
+                                    <span class="stream-action">{{ entry.get_action_display }}</span>
+                                    <span class="stream-time" title="{{ entry.timestamp|date:'M d, Y H:i' }}">{{ entry.timestamp|timesince }} ago</span>
+                                </div>
+                                <div class="stream-desc">{{ entry.description }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="stream-empty">No activity recorded for this task yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="matter-no-tasks">No tasks in this matter</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
 </div>
-</div></div>
+{% else %}
+<div class="timeline-empty-card">
+    <i class="fas fa-briefcase"></i>
+    <h3>No Matters Assigned</h3>
+    <p>You do not have any matters assigned to you.</p>
+</div>
+{% endif %}
+
+<script>
+    function toggleTaskTimeline(streamId, rowEl) {
+        const stream = document.getElementById(streamId);
+        if (!stream) return;
+        const isOpen = stream.style.display === 'block';
+        const chevron = rowEl.querySelector('.task-chevron');
+
+        if (isOpen) {
+            stream.style.display = 'none';
+            rowEl.classList.remove('active');
+            if (chevron) chevron.classList.remove('rotate');
+        } else {
+            stream.style.display = 'block';
+            rowEl.classList.add('active');
+            if (chevron) chevron.classList.add('rotate');
+        }
+    }
+
+    function expandAll() {
+        document.querySelectorAll('.task-stream').forEach(s => s.style.display = 'block');
+        document.querySelectorAll('.task-row').forEach(r => {
+            r.classList.add('active');
+            const c = r.querySelector('.task-chevron');
+            if (c) c.classList.add('rotate');
+        });
+    }
+
+    function collapseAll() {
+        document.querySelectorAll('.task-stream').forEach(s => s.style.display = 'none');
+        document.querySelectorAll('.task-row').forEach(r => {
+            r.classList.remove('active');
+            const c = r.querySelector('.task-chevron');
+            if (c) c.classList.remove('rotate');
+        });
+    }
+
+    function filterTimeline() {
+        const query = document.getElementById('timelineFilter').value.trim().toLowerCase();
+        const cards = document.querySelectorAll('.matter-card');
+
+        cards.forEach(card => {
+            const matterTitle = card.getAttribute('data-title') || '';
+            const taskNodes = card.querySelectorAll('.task-node');
+            let hasMatchingTask = false;
+
+            taskNodes.forEach(node => {
+                const taskName = node.getAttribute('data-task-name') || '';
+                if (!query || taskName.includes(query) || matterTitle.includes(query)) {
+                    node.style.display = '';
+                    hasMatchingTask = true;
+                } else {
+                    node.style.display = 'none';
+                }
+            });
+
+            if (!query || matterTitle.includes(query) || hasMatchingTask) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+</script>
 {% endblock %}

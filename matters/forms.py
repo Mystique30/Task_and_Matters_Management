@@ -63,6 +63,19 @@ class TaskForm(forms.ModelForm):
         self.fields['matter'].required = False
 
 
+class MemberTaskStatusForm(forms.ModelForm):
+    """
+    Form for members to update ONLY the status of tasks assigned to them.
+    Django automatically restricts incoming POST data to only the fields listed here.
+    """
+    class Meta:
+        model = Task
+        fields = ['status']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-input'}),
+        }
+
+
 class DocumentForm(forms.ModelForm):
     class Meta:
         model = Document

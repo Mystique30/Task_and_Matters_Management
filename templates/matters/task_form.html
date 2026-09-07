@@ -5,6 +5,13 @@
 <div class="card" style="max-width: 640px;">
     <div class="card-header"><h3>{{ title }}</h3></div>
     <div class="card-body">
+        {% if is_member_edit and task %}
+        <div style="background: var(--bg-main); padding: 14px 18px; border-radius: var(--radius); margin-bottom: 20px; font-size: 14px; border: 1px solid var(--border-light);">
+            <div style="margin-bottom: 6px;"><strong>Task:</strong> {{ task.title }}</div>
+            {% if task.matter %}<div style="margin-bottom: 6px; color: var(--text-secondary);"><strong>Matter:</strong> {{ task.matter.title }}</div>{% endif %}
+            {% if task.due_date %}<div style="color: var(--text-secondary);"><strong>Due Date:</strong> {{ task.due_date|date:"M d, Y" }}</div>{% endif %}
+        </div>
+        {% endif %}
         <form method="POST">
             {% csrf_token %}
             {% for field in form %}
