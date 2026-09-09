@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Matter, Task, Document, Comment, Reminder, Notification, TimelineEntry
+from .models import Matter, Task, Document, Comment, Reminder, Notification, TimelineEntry, ChatMessage
 
 
 @admin.register(Matter)
@@ -44,3 +44,10 @@ class NotificationAdmin(admin.ModelAdmin):
 class TimelineEntryAdmin(admin.ModelAdmin):
     list_display = ('user', 'action', 'description', 'timestamp')
     list_filter = ('action',)
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'recipient', 'room', 'message', 'created_at')
+    list_filter = ('room', 'created_at')
+    search_fields = ('message', 'sender__username', 'recipient__username')

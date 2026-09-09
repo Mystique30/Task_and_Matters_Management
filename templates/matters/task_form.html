@@ -12,7 +12,7 @@
             {% if task.due_date %}<div style="color: var(--text-secondary);"><strong>Due Date:</strong> {{ task.due_date|date:"M d, Y" }}</div>{% endif %}
         </div>
         {% endif %}
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             {% for field in form %}
             <div class="form-group">

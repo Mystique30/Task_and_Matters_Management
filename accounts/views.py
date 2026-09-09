@@ -190,3 +190,52 @@ def user_delete_view(request, user_id):
     return render(request, 'accounts/user_confirm_delete.html', {
         'del_user': del_user,
     })
+
+
+@admin_required
+def user_detail_view(request, user_id):
+    """
+    Admin: View a user's assigned matters and tasks.
+    Shows each matter with its tasks and completion status,
+    plus standalone tasks not attached to any matter.
+    """
+    from matters.models import Matter, Task
+
+    view_user = get_object_or_404(User, id=user_id)
+
+    # Matters assigned to this user, prefetching tasks within those matters
+    # that are also assigned to this user
+    matters = (
+        Matter.objects
+        .filter(assigned_to=view_user)
+        .prefetch_related('tasks')
+        .order_by('-created_at')
+    )
+
+    # All tasks directly assigned to this user
+    all_tasks = (
+        Task.objects
+        .filter(assigned_to=view_user)
+        .select_related('matter')
+        .order_by('-created_at')
+    )
+
+    # Tasks NOT linked to any of the assigned matters (standalone / cross-matter tasks)
+    matter_ids = matters.values_list('id', flat=True)
+    standalone_tasks = all_tasks.exclude(matter_id__in=matter_ids)
+
+    # Per-user stats
+    total_tasks = all_tasks.count()
+    completed_tasks = all_tasks.filter(status='completed').count()
+    in_progress_tasks = all_tasks.filter(status='in_progress').count()
+    todo_tasks = all_tasks.filter(status='todo').count()
+
+    return render(request, 'accounts/user_detail.html', {
+        'view_user': view_user,
+        'matters': matters,
+        'standalone_tasks': standalone_tasks,
+        'total_tasks': total_tasks,
+        'completed_tasks': completed_tasks,
+        'in_progress_tasks': in_progress_tasks,
+        'todo_tasks': todo_tasks,
+    })

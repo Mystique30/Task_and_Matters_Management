@@ -24,7 +24,17 @@
                     <td>{% if task.matter %}<a href="{% url 'matter_detail' task.matter.id %}">{{ task.matter.title }}</a>{% else %}—{% endif %}</td>
                     <td><span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">{{ task.get_status_display }}</span></td>
                     <td><span class="priority-{{ task.priority }}">{{ task.get_priority_display }}</span></td>
-                    <td>{{ task.assigned_to.username|default:"—" }}</td>
+                    <td>
+                        {% with assignees=task.get_all_assigned_users %}
+                            {% if assignees %}
+                                {% for u in assignees %}
+                                    <span class="badge badge-secondary" style="font-size: 11px; margin: 1px;">{{ u.username }}</span>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                     <td>{% if task.due_date %}{% if task.is_overdue %}<span style="color: var(--danger); font-weight: 600;">{% endif %}{{ task.due_date|date:"M d, Y" }}{% if task.is_overdue %}</span>{% endif %}{% else %}—{% endif %}</td>
                     <td>
                         <div class="flex gap-1">
@@ -32,7 +42,7 @@
                             {% if request.user.profile.is_admin or request.user.profile.is_manager %}
                             <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline" title="Edit"><i class="fas fa-edit"></i></a>
                             <a href="{% url 'task_delete' task.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);" title="Delete"><i class="fas fa-trash"></i></a>
-                            {% elif task.assigned_to == request.user %}
+                            {% elif request.user in task.get_all_assigned_users %}
                             <a href="{% url 'task_edit' task.id %}" class="btn btn-sm btn-outline" title="Edit Status"><i class="fas fa-edit"></i></a>
                             {% endif %}
                         </div>

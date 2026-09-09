@@ -3,13 +3,34 @@
 {% block content %}
 <div class="page-header"><div><h1>Documents</h1><p>All uploaded files</p></div><a href="{% url 'document_upload' %}" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</a></div>
 <div class="card"><div class="table-container"><table>
-<thead><tr><th>Title</th><th>Matter</th><th>Task</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+<thead><tr><th>Title</th><th>Matter</th><th>Task</th><th>Uploaded By</th><th>Assigned To</th><th>Date</th><th>Actions</th></tr></thead>
 <tbody>{% for doc in documents %}<tr>
 <td><i class="fas fa-file" style="color: var(--primary); margin-right: 8px;"></i><a href="{{ doc.file.url }}" target="_blank">{{ doc.title }}</a></td>
 <td>{% if doc.matter %}<a href="{% url 'matter_detail' doc.matter.id %}">{{ doc.matter.title }}</a>{% else %}—{% endif %}</td>
 <td>{% if doc.task %}<a href="{% url 'task_detail' doc.task.id %}">{{ doc.task.title }}</a>{% else %}—{% endif %}</td>
-<td>{{ doc.uploaded_by.username }}</td><td>{{ doc.uploaded_at|date:"M d, Y" }}</td>
-<td>{% if request.user.profile.is_admin or request.user.profile.is_manager %}<a href="{% url 'document_delete' doc.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);"><i class="fas fa-trash"></i></a>{% endif %}</td>
-</tr>{% empty %}<tr><td colspan="6" class="text-center" style="padding: 40px; color: var(--text-light);">No documents uploaded.</td></tr>{% endfor %}</tbody>
+<td>{{ doc.uploaded_by.username }}</td>
+<td>
+    {% if doc.assigned_to %}
+        <span class="badge badge-info"><i class="fas fa-user"></i> {{ doc.assigned_to.get_full_name|default:doc.assigned_to.username }}</span>
+    {% else %}
+        {% if doc.uploaded_by.profile.is_admin %}
+            <span class="badge badge-warning" title="Only visible to admins"><i class="fas fa-lock"></i> Unassigned (Admin Only)</span>
+        {% else %}
+            <span class="badge badge-secondary">Unassigned</span>
+        {% endif %}
+    {% endif %}
+</td>
+<td>{{ doc.uploaded_at|date:"M d, Y" }}</td>
+<td>
+    <div class="flex gap-1">
+        {% if request.user.profile.is_admin or doc.uploaded_by == request.user %}
+        <a href="{% url 'document_edit' doc.id %}" class="btn btn-sm btn-outline" title="Edit / Reassign"><i class="fas fa-edit"></i></a>
+        {% endif %}
+        {% if request.user.profile.is_admin or doc.uploaded_by == request.user or request.user.profile.is_manager and doc.assigned_to == request.user %}
+        <a href="{% url 'document_delete' doc.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);" title="Delete"><i class="fas fa-trash"></i></a>
+        {% endif %}
+    </div>
+</td>
+</tr>{% empty %}<tr><td colspan="7" class="text-center" style="padding: 40px; color: var(--text-light);">No documents uploaded.</td></tr>{% endfor %}</tbody>
 </table></div></div>
 {% endblock %}

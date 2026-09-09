@@ -12,7 +12,7 @@
             <tbody>
                 {% for u in users %}
                 <tr>
-                    <td style="font-weight: 500;">{{ u.get_full_name|default:u.username }}</td>
+                    <td style="font-weight: 500;"><a href="{% url 'user_detail' u.id %}" style="color: var(--text-primary);">{{ u.get_full_name|default:u.username }}</a></td>
                     <td>{{ u.email|default:"—" }}</td>
                     <td><span class="badge {% if u.profile.role == 'admin' %}badge-danger{% elif u.profile.role == 'manager' %}badge-warning{% else %}badge-info{% endif %}">{{ u.profile.get_role_display }}</span></td>
                     <td><span class="badge {% if u.is_active %}badge-success{% else %}badge-secondary{% endif %}">{% if u.is_active %}Active{% else %}Inactive{% endif %}</span></td>

@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{{ view_user.username }} — User Detail{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="{% url 'user_list' %}">Users</a>
+    <span>/</span>
+    <span>{{ view_user.get_full_name|default:view_user.username }}</span>
+</div>
+
+<!-- ===== User Profile Header ===== -->
+<div class="ud-header card">
+    <div class="ud-avatar">{{ view_user.username|first|upper }}</div>
+    <div class="ud-info">
+        <h1>{{ view_user.get_full_name|default:view_user.username }}</h1>
+        <div class="ud-meta">
+            <span><i class="fas fa-at"></i> {{ view_user.username }}</span>
+            {% if view_user.email %}<span><i class="fas fa-envelope"></i> {{ view_user.email }}</span>{% endif %}
+            {% if view_user.profile %}
+            <span class="badge {% if view_user.profile.role == 'admin' %}badge-danger{% elif view_user.profile.role == 'manager' %}badge-warning{% else %}badge-info{% endif %}">
+                <i class="fas fa-shield-alt"></i> {{ view_user.profile.get_role_display }}
+            </span>
+            {% endif %}
+            <span class="badge {% if view_user.is_active %}badge-success{% else %}badge-secondary{% endif %}">
+                {% if view_user.is_active %}● Active{% else %}○ Inactive{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="ud-actions">
+        <a href="{% url 'user_edit' view_user.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</a>
+        {% if view_user != request.user %}
+        <a href="{% url 'user_delete' view_user.id %}" class="btn btn-outline" style="color: var(--danger);"><i class="fas fa-trash"></i> Delete</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ===== Workload Stats ===== -->
+<div class="ud-stats-row">
+    <div class="ud-stat-card">
+        <div class="ud-stat-icon" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-tasks"></i></div>
+        <div>
+            <div class="ud-stat-value">{{ total_tasks }}</div>
+            <div class="ud-stat-label">Total Tasks</div>
+        </div>
+    </div>
+    <div class="ud-stat-card">
+        <div class="ud-stat-icon" style="background: var(--success-light); color: var(--success);"><i class="fas fa-check-circle"></i></div>
+        <div>
+            <div class="ud-stat-value">{{ completed_tasks }}</div>
+            <div class="ud-stat-label">Completed</div>
+        </div>
+    </div>
+    <div class="ud-stat-card">
+        <div class="ud-stat-icon" style="background: var(--warning-light); color: var(--warning);"><i class="fas fa-spinner"></i></div>
+        <div>
+            <div class="ud-stat-value">{{ in_progress_tasks }}</div>
+            <div class="ud-stat-label">In Progress</div>
+        </div>
+    </div>
+    <div class="ud-stat-card">
+        <div class="ud-stat-icon" style="background: var(--info-light); color: var(--info);"><i class="fas fa-circle"></i></div>
+        <div>
+            <div class="ud-stat-value">{{ todo_tasks }}</div>
+            <div class="ud-stat-label">To Do</div>
+        </div>
+    </div>
+    <div class="ud-stat-card">
+        <div class="ud-stat-icon" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-briefcase"></i></div>
+        <div>
+            <div class="ud-stat-value">{{ matters|length }}</div>
+            <div class="ud-stat-label">Matters</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Assigned Matters ===== -->
+<div class="ud-section-title"><i class="fas fa-briefcase"></i> Assigned Matters</div>
+
+{% if matters %}
+<div class="ud-accordion" id="mattersAccordion">
+    {% for matter in matters %}
+    <div class="ud-acc-item">
+        <!-- Matter Row (clickable header) -->
+        <button class="ud-acc-header" onclick="toggleAccordion('matter-{{ matter.id }}')" type="button">
+            <div class="ud-acc-left">
+                <i class="fas fa-chevron-right ud-acc-chevron" id="chev-matter-{{ matter.id }}"></i>
+                <span class="ud-acc-title">{{ matter.title }}</span>
+                {% if matter.due_date %}
+                <span class="ud-acc-due {% if matter.is_overdue %}ud-overdue{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Due {{ matter.due_date|date:"M d, Y" }}{% if matter.is_overdue %} — Overdue{% endif %}
+                </span>
+                {% endif %}
+            </div>
+            <div class="ud-acc-right">
+                <span class="badge {% if matter.status == 'active' %}badge-info{% elif matter.status == 'completed' %}badge-success{% else %}badge-secondary{% endif %}">
+                    {{ matter.get_status_display }}
+                </span>
+                <span class="ud-acc-task-count">{{ matter.tasks.count }} task{{ matter.tasks.count|pluralize }}</span>
+            </div>
+        </button>
+
+        <!-- Expanded Tasks List -->
+        <div class="ud-acc-body" id="matter-{{ matter.id }}" style="display: none;">
+            {% with tasks=matter.tasks.all %}
+            {% if tasks %}
+            <div class="ud-task-list">
+                <div class="ud-task-list-header">
+                    <span>Task</span><span>Status</span><span>Priority</span><span>Due</span>
+                </div>
+                {% for task in tasks %}
+                <div class="ud-task-row {% if task.is_overdue %}ud-task-overdue{% endif %}">
+                    <div class="ud-task-name">
+                        <i class="fas {% if task.status == 'completed' %}fa-check-circle ud-done{% elif task.status == 'in_progress' %}fa-spinner ud-inprog{% else %}fa-circle ud-todo{% endif %}"></i>
+                        <a href="{% url 'task_detail' task.id %}">{{ task.title }}</a>
+                    </div>
+                    <span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">
+                        {{ task.get_status_display }}
+                    </span>
+                    <span class="priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                    <span class="ud-task-due {% if task.is_overdue %}ud-overdue{% endif %}">
+                        {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}—{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="ud-acc-empty"><i class="fas fa-inbox"></i> No tasks in this matter.</div>
+            {% endif %}
+            {% endwith %}
+            <div class="ud-acc-footer">
+                <a href="{% url 'matter_detail' matter.id %}" class="btn btn-sm btn-outline"><i class="fas fa-external-link-alt"></i> View Matter</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="ud-empty-block">
+    <i class="fas fa-briefcase"></i>
+    <p>No matters assigned to {{ view_user.username }}.</p>
+</div>
+{% endif %}
+
+<!-- ===== Standalone Tasks ===== -->
+{% if standalone_tasks %}
+<div class="ud-section-title" style="margin-top: 28px;"><i class="fas fa-tasks"></i> Standalone Tasks</div>
+<div class="card">
+    <div class="ud-task-list" style="padding: 0 20px 12px;">
+        <div class="ud-task-list-header" style="padding-top: 14px;">
+            <span>Task</span><span>Status</span><span>Priority</span><span>Due</span>
+        </div>
+        {% for task in standalone_tasks %}
+        <div class="ud-task-row {% if task.is_overdue %}ud-task-overdue{% endif %}">
+            <div class="ud-task-name">
+                <i class="fas {% if task.status == 'completed' %}fa-check-circle ud-done{% elif task.status == 'in_progress' %}fa-spinner ud-inprog{% else %}fa-circle ud-todo{% endif %}"></i>
+                <a href="{% url 'task_detail' task.id %}">{{ task.title }}</a>
+            </div>
+            <span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">
+                {{ task.get_status_display }}
+            </span>
+            <span class="priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+            <span class="ud-task-due {% if task.is_overdue %}ud-overdue{% endif %}">
+                {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}—{% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleAccordion(id) {
+    var body = document.getElementById(id);
+    var chev = document.getElementById('chev-' + id);
+    var isOpen = body.style.display === 'block';
+    body.style.display = isOpen ? 'none' : 'block';
+    chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+}
+</script>
+{% endblock %}

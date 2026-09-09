@@ -35,7 +35,7 @@
         </div>
 
         <div class="matter-card-sub">
-            <span><i class="fas fa-user-tie"></i> {{ matter.assigned_to.get_full_name|default:matter.assigned_to.username|default:"Unassigned" }}</span>
+            <span><i class="fas fa-users"></i> {{ matter.get_assigned_users_display }}</span>
             {% if matter.due_date %}
             <span><i class="far fa-calendar"></i> Due {{ matter.due_date|date:"M d, Y" }}</span>
             {% endif %}
@@ -53,9 +53,9 @@
                     </div>
                     <div class="task-row-right">
                         <span class="task-badge {{ task.status }}">{{ task.get_status_display }}</span>
-                        {% if task.assigned_to %}
-                        <span class="task-member" title="Assigned Member">
-                            <i class="fas fa-user"></i> {{ task.assigned_to.username }}
+                        {% if task.get_all_assigned_users %}
+                        <span class="task-member" title="Assigned: {{ task.get_assigned_users_display }}">
+                            <i class="fas fa-user"></i> {{ task.get_assigned_users_display }}
                         </span>
                         {% endif %}
                         <span class="task-count" title="{{ task.timeline_entries.all|length }} activities">

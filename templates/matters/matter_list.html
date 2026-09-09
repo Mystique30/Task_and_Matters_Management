@@ -44,7 +44,17 @@
                     <td>
                         <span class="priority-{{ matter.priority }}">{{ matter.get_priority_display }}</span>
                     </td>
-                    <td>{{ matter.assigned_to.username|default:"—" }}</td>
+                    <td>
+                        {% with assignees=matter.get_all_assigned_users %}
+                            {% if assignees %}
+                                {% for u in assignees %}
+                                    <span class="badge badge-secondary" style="font-size: 11px; margin: 1px;">{{ u.username }}</span>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                     <td>
                         {% if matter.due_date %}
                             {% if matter.is_overdue %}<span style="color: var(--danger); font-weight: 600;">{% endif %}

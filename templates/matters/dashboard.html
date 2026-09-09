@@ -3,6 +3,36 @@
 {% block title %}Dashboard — TaskMatters{% endblock %}
 
 {% block content %}
+{% if request.user.profile.is_member %}
+<div class="member-welcome-banner">
+    <div class="member-welcome-left">
+        <div class="member-avatar-badge">
+            {{ request.user.first_name|slice:":1"|default:request.user.username|slice:":1"|upper }}
+        </div>
+        <div>
+            <h2>Welcome back, {{ request.user.get_full_name|default:request.user.username }}! 👋</h2>
+            <p>Your workspace overview, assigned tasks, and priority deadlines.</p>
+        </div>
+    </div>
+    <div class="member-quick-stats">
+        <div class="member-stat-box">
+            <span class="member-stat-val" style="color: var(--primary);">{{ personal_tasks }}</span>
+            <span class="member-stat-lbl">My Tasks</span>
+        </div>
+        <div class="member-stat-box">
+            <span class="member-stat-val" style="color: var(--warning);">{{ upcoming_tasks }}</span>
+            <span class="member-stat-lbl">Due Soon</span>
+        </div>
+        <div class="member-stat-box">
+            <span class="member-stat-val" style="color: var(--danger);">{{ overdue_count }}</span>
+            <span class="member-stat-lbl">Overdue</span>
+        </div>
+        <a href="{% url 'live_chat' %}" class="btn btn-sm btn-primary member-chat-quickbtn">
+            <i class="fas fa-comment-dots"></i> Team Chat
+        </a>
+    </div>
+</div>
+{% else %}
 <div class="dash-legend">
     <div class="dash-legend-items">
         <span class="legend-dot">
@@ -15,18 +45,15 @@
             <span class="dot red"></span> Overdue Tasks
         </span>
     </div>
-    <button class="dash-legend-menu" id="dashMenuBtn" type="button" title="Options">
-        <i class="fas fa-bars"></i>
-    </button>
 </div>
+{% endif %}
 
 <!-- Active Matters · Matters Due · Overdue -->
 <div class="dash-grid">
     <!-- 1. Active Matters -->
-    <div class="dash-card">
+    <div class="dash-card card-blue">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator blue"></span>
                 <h3>Active Matters</h3>
             </div>
             <span class="dash-card-count">{{ active_matters }}</span>
@@ -54,10 +81,9 @@
     </div>
 
     <!-- 2. Matters Due -->
-    <div class="dash-card">
+    <div class="dash-card card-orange">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator orange"></span>
                 <h3>Matters Due</h3>
             </div>
             <span class="dash-card-count">{{ matters_due }}</span>
@@ -85,10 +111,9 @@
     </div>
 
     <!-- 3. Overdue -->
-    <div class="dash-card">
+    <div class="dash-card card-red">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator red"></span>
                 <h3>Overdue</h3>
             </div>
             <span class="dash-card-count">{{ overdue_count }}</span>
@@ -100,7 +125,7 @@
                     <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
                     <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
                 </div>
-                {% if request.user.profile.is_admin or request.user.profile.is_manager or task.assigned_to == request.user %}
+                {% if request.user.profile.is_admin or request.user.profile.is_manager or request.user in task.get_all_assigned_users %}
                 <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
@@ -130,10 +155,9 @@
     </div>
 
     <!-- 4. Upcoming Tasks -->
-    <div class="dash-card">
+    <div class="dash-card card-green">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator green"></span>
                 <h3>Upcoming Tasks</h3>
             </div>
             <span class="dash-card-count">{{ upcoming_tasks }}</span>
@@ -145,7 +169,7 @@
                     <a href="{% url 'task_detail' task.id %}">{{ task.title|truncatechars:28 }}</a>
                     <span>Due: {{ task.due_date|date:"M d, Y" }}</span>
                 </div>
-                {% if request.user.profile.is_admin or request.user.profile.is_manager or task.assigned_to == request.user %}
+                {% if request.user.profile.is_admin or request.user.profile.is_manager or request.user in task.get_all_assigned_users %}
                 <a href="{% url 'task_edit' task.id %}" class="dash-card-edit" title="Edit">
                     <i class="fas fa-pen"></i>
                 </a>
@@ -161,10 +185,9 @@
     </div>
 
     <!-- 5. Recent Updates -->
-    <div class="dash-card">
+    <div class="dash-card card-purple">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator purple"></span>
                 <h3>Recent Updates</h3>
             </div>
             <span class="dash-card-count">{{ recent_updates|length }}</span>
@@ -187,10 +210,9 @@
     </div>
 
     <!-- 6. Personal Tasks -->
-    <div class="dash-card">
+    <div class="dash-card card-indigo">
         <div class="dash-card-header">
             <div class="dash-card-title">
-                <span class="dash-card-indicator blue"></span>
                 <h3>Personal Tasks</h3>
             </div>
             <span class="dash-card-count">{{ personal_tasks }}</span>

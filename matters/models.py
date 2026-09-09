@@ -28,6 +28,10 @@ class Matter(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='assigned_matters'
     )
+    assigned_users = models.ManyToManyField(
+        User, blank=True,
+        related_name='multi_assigned_matters'
+    )
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='created_matters'
@@ -37,6 +41,20 @@ class Matter(models.Model):
 
     def __str__(self):
         return self.title
+
+    def get_all_assigned_users(self):
+        """Returns all assigned users (M2M plus legacy single assignee)."""
+        users = list(self.assigned_users.all())
+        if self.assigned_to and self.assigned_to not in users:
+            users.append(self.assigned_to)
+        return users
+
+    def get_assigned_users_display(self):
+        """Returns a formatted string of all assigned user names."""
+        users = self.get_all_assigned_users()
+        if not users:
+            return "Unassigned"
+        return ", ".join(u.get_full_name() or u.username for u in users)
 
     @property
     def is_overdue(self):
@@ -79,6 +97,10 @@ class Task(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='assigned_tasks'
     )
+    assigned_users = models.ManyToManyField(
+        User, blank=True,
+        related_name='multi_assigned_tasks'
+    )
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='created_tasks'
@@ -88,6 +110,20 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+    def get_all_assigned_users(self):
+        """Returns all assigned users (M2M plus legacy single assignee)."""
+        users = list(self.assigned_users.all())
+        if self.assigned_to and self.assigned_to not in users:
+            users.append(self.assigned_to)
+        return users
+
+    def get_assigned_users_display(self):
+        """Returns a formatted string of all assigned user names."""
+        users = self.get_all_assigned_users()
+        if not users:
+            return "Unassigned"
+        return ", ".join(u.get_full_name() or u.username for u in users)
 
     @property
     def is_overdue(self):
@@ -114,6 +150,10 @@ class Document(models.Model):
     )
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    assigned_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        related_name='assigned_documents', null=True, blank=True
+    )
 
     def __str__(self):
         return self.title
@@ -218,3 +258,21 @@ class TimelineEntry(models.Model):
     class Meta:
         ordering = ['-timestamp']
         verbose_name_plural = 'Timeline entries'
+
+
+class ChatMessage(models.Model):
+    """Live team chat and direct messages."""
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_chat_messages')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_chat_messages', null=True, blank=True)
+    room = models.CharField(max_length=50, default='general')  # 'general', 'matters', 'urgent' or 'dm'
+    message = models.TextField()
+    matter = models.ForeignKey(Matter, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_messages')
+    task = models.ForeignKey(Task, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_messages')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"[{self.room}] {self.sender.username}: {self.message[:30]}"

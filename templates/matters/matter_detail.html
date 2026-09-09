@@ -23,7 +23,16 @@
             </div>
             {% endif %}
             <div class="detail-meta-item">
-                <i class="fas fa-user"></i> Assigned: {{ matter.assigned_to.username|default:"Unassigned" }}
+                <i class="fas fa-users"></i> Assigned:
+                {% with assignees=matter.get_all_assigned_users %}
+                    {% if assignees %}
+                        {% for u in assignees %}
+                            <span class="badge badge-secondary" style="font-size: 11px; margin-left: 2px;">{{ u.username }}</span>
+                        {% endfor %}
+                    {% else %}
+                        Unassigned
+                    {% endif %}
+                {% endwith %}
             </div>
             <div class="detail-meta-item">
                 <i class="fas fa-user-edit"></i> Created by: {{ matter.created_by.username }}
@@ -58,7 +67,7 @@
             <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <a href="{% url 'task_detail' task.id %}" style="font-weight: 500;">{{ task.title }}</a>
-                    <div style="font-size: 12px; color: var(--text-light);">{{ task.assigned_to.username|default:"Unassigned" }}</div>
+                    <div style="font-size: 12px; color: var(--text-light);">{{ task.get_assigned_users_display }}</div>
                 </div>
                 <span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">{{ task.get_status_display }}</span>
             </div>

@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Live Chat — TaskMatters{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 16px;">
+    <div>
+        <h1 style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-comment-dots" style="color: var(--primary);"></i> Live Team Chat
+            <span class="live-chat-badge"><span class="live-pulse-dot"></span> Active</span>
+        </h1>
+        <p>Real-time collaboration across channels and direct 1-on-1 team messaging</p>
+    </div>
+</div>
+
+<div class="live-chat-wrapper">
+    <!-- Chat Sidebar -->
+    <aside class="chat-sidebar" id="chatSidebar">
+        <div class="chat-sidebar-header">
+            <div style="position: relative; width: 100%;">
+                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-light);"></i>
+                <input type="text" class="chat-search-input" id="chatSearchInput" placeholder="Filter channels & team..." oninput="filterChatList(this.value)">
+            </div>
+        </div>
+
+        <div class="chat-sidebar-scroll">
+            <!-- Channels Section -->
+            <div>
+                <div class="chat-group-title">
+                    <span><i class="fas fa-hashtag" style="font-size: 10px;"></i> Channels</span>
+                </div>
+                <div id="channelsList">
+                    {% for c in channels %}
+                    <button type="button" class="chat-room-btn {% if forloop.first %}active{% endif %}" 
+                            id="room-btn-{{ c.id }}"
+                            data-room-type="channel"
+                            data-room-id="{{ c.id }}"
+                            data-title="# {{ c.title }}"
+                            data-sub="{{ c.desc }}"
+                            onclick="handleRoomClick(this)">
+                        <i class="fas fa-{{ c.icon }}" style="width: 16px; color: var(--text-secondary);"></i>
+                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.title }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Direct Messages Section -->
+            <div>
+                <div class="chat-group-title">
+                    <span><i class="fas fa-user-friends" style="font-size: 10px;"></i> Direct Messages</span>
+                    <span style="font-size: 10px; opacity: 0.7;">{{ other_users.count }}</span>
+                </div>
+                <div id="directMessagesList">
+                    {% for u in other_users %}
+                    <button type="button" class="chat-room-btn" 
+                            id="room-btn-dm_{{ u.id }}"
+                            data-room-type="dm"
+                            data-room-id="dm_{{ u.id }}"
+                            data-title="{{ u.get_full_name|default:u.username }}"
+                            data-sub="Direct Message"
+                            onclick="handleRoomClick(this)">
+                        <div class="chat-user-avatar" style="background: {% cycle '#6366f1' '#3b82f6' '#0ea5e9' '#10b981' '#8b5cf6' %};">
+                            {{ u.first_name|slice:":1"|default:u.username|slice:":1"|upper }}
+                            <span class="chat-online-dot"></span>
+                        </div>
+                        <div style="flex: 1; min-width: 0; text-align: left;">
+                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px;">
+                                {{ u.get_full_name|default:u.username }}
+                            </div>
+                        </div>
+                        <span class="chat-badge-role">{{ u.profile.role|default:"Member"|title }}</span>
+                    </button>
+                    {% empty %}
+                    <div style="padding: 10px 14px; font-size: 12px; color: var(--text-light);">
+                        No other team members found.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Chat Main Area -->
+    <main class="chat-main-area">
+        <!-- Chat Header -->
+        <header class="chat-main-header">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <button type="button" class="btn btn-sm btn-outline chat-mobile-toggle" onclick="toggleChatSidebar()" title="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div style="min-width: 0;">
+                    <div class="chat-header-title" id="chatHeaderTitle">
+                        <i class="fas fa-hashtag" id="chatHeaderIcon"></i>
+                        <span id="chatHeaderName"># General Discussion</span>
+                    </div>
+                    <div class="chat-header-sub" id="chatHeaderSub">
+                        Company-wide team chat, updates, and open collaboration
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn btn-sm btn-outline" onclick="loadMessages(true)" title="Refresh chat">
+                    <i class="fas fa-sync-alt" id="chatRefreshIcon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Message Feed Area -->
+        <div class="chat-messages-area" id="chatMessagesArea">
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-light);" id="chatLoadingState">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-right: 8px;"></i> Loading conversation...
+            </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="chat-input-bar">
+            <!-- Optional Matter / Task attachment selector -->
+            <div class="chat-attach-row">
+                <span style="color: var(--text-light); font-size: 11px;"><i class="fas fa-paperclip"></i> Reference:</span>
+                <select id="chatAttachMatter" class="chat-attach-select" title="Optionally reference a Matter">
+                    <option value="">— Link Matter (Optional) —</option>
+                    {% for m in user_matters %}
+                    <option value="{{ m.id }}">💼 {{ m.title }}</option>
+                    {% endfor %}
+                </select>
+                <select id="chatAttachTask" class="chat-attach-select" title="Optionally reference a Task">
+                    <option value="">— Link Task (Optional) —</option>
+                    {% for t in user_tasks %}
+                    <option value="{{ t.id }}">📋 {{ t.title }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 2px 7px;" onclick="clearAttachments()" title="Clear referenced matter/task">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Message input row -->
+            <form class="chat-input-row" id="chatForm" onsubmit="handleChatSubmit(event)">
+                {% csrf_token %}
+                <textarea id="chatInputText" 
+                          class="chat-textarea" 
+                          rows="1" 
+                          placeholder="Type your message... (Press Enter to send, Shift+Enter for newline)"
+                          onkeydown="handleKeyDown(event)"></textarea>
+                <button type="submit" class="chat-send-btn" id="chatSendBtn" title="Send message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+    // State management
+    let activeRoom = 'general';
+    let lastMessageId = 0;
+    let pollInterval = null;
+    let isFetching = false;
+    const currentUserId = {{ request.user.id }};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load initial room
+        loadMessages(true);
+
+        // Start real-time polling every 2.5 seconds
+        pollInterval = setInterval(() => {
+            loadMessages(false);
+        }, 2500);
+
+        // Auto-focus input
+        const input = document.getElementById('chatInputText');
+        if (input) input.focus();
+    });
+
+    function toggleChatSidebar() {
+        const sidebar = document.getElementById('chatSidebar');
+        if (sidebar) sidebar.classList.toggle('open');
+    }
+
+    function handleRoomClick(btn) {
+        if (!btn) return;
+        switchRoom(btn.dataset.roomType, btn.dataset.roomId, btn.dataset.title, btn.dataset.sub);
+    }
+
+    function switchRoom(type, roomId, title, subtitle) {
+        if (activeRoom === roomId) return;
+
+        // Close mobile sidebar if open
+        const sidebar = document.getElementById('chatSidebar');
+        if (sidebar) sidebar.classList.remove('open');
+
+        // Update active room
+        activeRoom = roomId;
+        lastMessageId = 0;
+
+        // Update header
+        const titleEl = document.getElementById('chatHeaderName');
+        const subEl = document.getElementById('chatHeaderSub');
+        const iconEl = document.getElementById('chatHeaderIcon');
+
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.textContent = subtitle;
+        if (iconEl) {
+            iconEl.className = type === 'channel' ? 'fas fa-hashtag' : 'fas fa-user';
+        }
+
+        // Update active class in sidebar
+        document.querySelectorAll('.chat-room-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('room-btn-' + roomId);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        // Clear messages area and show loading
+        const area = document.getElementById('chatMessagesArea');
+        area.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-light);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-right: 8px;"></i> Loading conversation...
+            </div>
+        `;
+
+        // Update textarea placeholder
+        const input = document.getElementById('chatInputText');
+        if (input) {
+            input.placeholder = `Message ${title}... (Enter to send)`;
+            input.focus();
+        }
+
+        // Load messages for new room
+        loadMessages(true);
+    }
+
+    async function loadMessages(isInitial = false) {
+        if (isFetching) return;
+        isFetching = true;
+
+        const refreshIcon = document.getElementById('chatRefreshIcon');
+        if (isInitial && refreshIcon) refreshIcon.classList.add('fa-spin');
+
+        try {
+            let url = `{% url 'chat_api_messages' %}?room=${encodeURIComponent(activeRoom)}`;
+            if (!isInitial && lastMessageId > 0) {
+                url += `&since_id=${lastMessageId}`;
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network error');
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                renderMessages(data.messages, isInitial);
+            }
+        } catch (err) {
+            console.error('Chat error:', err);
+        } finally {
+            isFetching = false;
+            if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+        }
+    }
+
+    function renderMessages(messages, isInitial) {
+        const area = document.getElementById('chatMessagesArea');
+        if (!area) return;
+
+        if (isInitial) {
+            area.innerHTML = '';
+            if (messages.length === 0) {
+                area.innerHTML = `
+                    <div style="text-align: center; margin: auto; color: var(--text-light); padding: 40px 20px;">
+                        <i class="fas fa-comments" style="font-size: 36px; margin-bottom: 12px; display: block; opacity: 0.4;"></i>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">No messages yet</div>
+                        <div style="font-size: 13px;">Be the first to say hello and start the discussion!</div>
+                    </div>
+                `;
+                return;
+            }
+        }
+
+        if (messages.length === 0) return;
+
+        // Track if user was near bottom before rendering new items
+        const isNearBottom = (area.scrollHeight - area.scrollTop - area.clientHeight) < 80;
+
+        messages.forEach(msg => {
+            if (msg.id > lastMessageId) {
+                lastMessageId = msg.id;
+            }
+
+            // Check if element already exists (avoid duplicates)
+            if (document.getElementById(`chat-msg-${msg.id}`)) return;
+
+            const msgEl = document.createElement('div');
+            msgEl.id = `chat-msg-${msg.id}`;
+            msgEl.className = `chat-msg-item ${msg.is_me ? 'is-me' : ''}`;
+
+            const initials = msg.sender_name.slice(0, 2).toUpperCase();
+
+            let tagsHtml = '';
+            if (msg.matter_id && msg.matter_title) {
+                tagsHtml += `
+                    <a href="/matters/${msg.matter_id}/" class="chat-tag-pill" title="View Matter">
+                        <i class="fas fa-briefcase"></i> ${escapeHtml(msg.matter_title)}
+                    </a>
+                `;
+            }
+            if (msg.task_id && msg.task_title) {
+                tagsHtml += `
+                    <a href="/tasks/${msg.task_id}/" class="chat-tag-pill" title="View Task">
+                        <i class="fas fa-tasks"></i> ${escapeHtml(msg.task_title)}
+                    </a>
+                `;
+            }
+
+            msgEl.innerHTML = `
+                <div class="chat-msg-avatar" style="${msg.is_me ? 'background: #4f46e5;' : 'background: #64748b;'}">
+                    ${initials}
+                </div>
+                <div class="chat-msg-body">
+                    <div class="chat-msg-header">
+                        <span class="chat-msg-sender">${escapeHtml(msg.sender_name)}</span>
+                        <span class="chat-badge-role" style="font-size: 9px; padding: 0 4px;">${escapeHtml(msg.sender_role)}</span>
+                        <span>•</span>
+                        <span>${msg.time_str}</span>
+                    </div>
+                    <div class="chat-bubble">
+                        ${escapeHtml(msg.message).replace(/\n/g, '<br>')}
+                        ${tagsHtml ? `<div style="display: flex; gap: 4px; flex-wrap: wrap;">${tagsHtml}</div>` : ''}
+                    </div>
+                </div>
+            `;
+
+            area.appendChild(msgEl);
+        });
+
+        // Scroll down
+        if (isInitial || isNearBottom) {
+            area.scrollTop = area.scrollHeight;
+        }
+    }
+
+    async function handleChatSubmit(e) {
+        if (e) e.preventDefault();
+        const input = document.getElementById('chatInputText');
+        const text = input ? input.value.trim() : '';
+        if (!text) return;
+
+        const matterSelect = document.getElementById('chatAttachMatter');
+        const taskSelect = document.getElementById('chatAttachTask');
+        const matterId = matterSelect ? matterSelect.value : '';
+        const taskId = taskSelect ? taskSelect.value : '';
+
+        // Clear input immediately for snappy UX
+        input.value = '';
+        input.style.height = 'auto';
+
+        try {
+            const formData = new FormData();
+            formData.append('room', activeRoom);
+            formData.append('message', text);
+            if (matterId) formData.append('matter_id', matterId);
+            if (taskId) formData.append('task_id', taskId);
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            const response = await fetch('{% url "chat_api_send" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Failed to send');
+            const data = await response.json();
+
+            if (data.status === 'ok' && data.message) {
+                renderMessages([data.message], false);
+                const area = document.getElementById('chatMessagesArea');
+                if (area) area.scrollTop = area.scrollHeight;
+            }
+        } catch (err) {
+            console.error('Error sending message:', err);
+            alert('Could not send message. Please check connection and try again.');
+        }
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleChatSubmit(null);
+        }
+    }
+
+    function clearAttachments() {
+        const m = document.getElementById('chatAttachMatter');
+        const t = document.getElementById('chatAttachTask');
+        if (m) m.value = '';
+        if (t) t.value = '';
+    }
+
+    function filterChatList(query) {
+        const q = query.toLowerCase().trim();
+        document.querySelectorAll('.chat-room-btn').forEach(btn => {
+            const title = (btn.getAttribute('data-title') || '').toLowerCase();
+            const sub = (btn.getAttribute('data-sub') || '').toLowerCase();
+            if (title.includes(q) || sub.includes(q)) {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+</script>
+{% endblock %}

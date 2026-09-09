@@ -23,6 +23,7 @@ urlpatterns = [
     # Documents
     path('documents/', views.document_list_view, name='document_list'),
     path('documents/upload/', views.document_upload_view, name='document_upload'),
+    path('documents/<int:doc_id>/edit/', views.document_edit_view, name='document_edit'),
     path('documents/<int:doc_id>/delete/', views.document_delete_view, name='document_delete'),
 
     # Comments
@@ -48,4 +49,9 @@ urlpatterns = [
 
     # Reports
     path('reports/', views.reports_view, name='reports'),
+
+    # Live Chat
+    path('chat/', views.live_chat_view, name='live_chat'),
+    path('chat/api/messages/', views.chat_api_messages, name='chat_api_messages'),
+    path('chat/api/send/', views.chat_api_send, name='chat_api_send'),
 ]

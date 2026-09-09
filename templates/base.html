@@ -6,17 +6,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Task & Matters Management{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=6">
+    <!-- ⚡ Apply saved theme BEFORE CSS loads — prevents any flash of wrong theme -->
+    <script>if(localStorage.getItem('theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.removeAttribute('data-theme');}</script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=16">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
-<body>
+<body class="{% if request.user.is_authenticated %}{% if request.user.profile.is_admin %}is-admin{% elif request.user.profile.is_manager %}is-manager{% else %}is-member{% endif %}{% endif %}">
     <div class="layout">
+        <!-- Backdrop overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
         <!-- =====SIDEBAR -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo">
                 <img src="/media/images/logo.png" alt="Logo" class="logo-icon">
                 <h2>Task And Matters</h2>
+                <button class="sidebar-close-btn" onclick="closeSidebar()" type="button" aria-label="Close menu">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <nav class="sidebar-nav">
                 <div class="sidebar-section">
@@ -49,6 +57,11 @@
                         class="sidebar-link {% if request.resolver_match.url_name == 'comment_list' %}active{% endif %}">
                         <i class="fas fa-comments"></i> Comments
                     </a>
+                    <a href="{% url 'live_chat' %}"
+                        class="sidebar-link {% if 'chat' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-comment-dots"></i> Live Chat
+                        <span class="live-chat-badge"><span class="live-pulse-dot"></span> Live</span>
+                    </a>
                     <a href="{% url 'reports' %}"
                         class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
                         <i class="fas fa-chart-bar"></i> Reports
@@ -72,6 +85,11 @@
             <!-- Topbar -->
             <header class="topbar">
                 <div class="topbar-left">
+                    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" type="button" aria-label="Toggle navigation menu" title="Navigation menu">
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                    </button>
                     <form class="topbar-search" action="{% url 'search' %}" method="GET">
                         <i class="fas fa-search"></i>
                         <input type="text" name="q" placeholder="Search matters, tasks..."
@@ -103,6 +121,11 @@
                                 <i class="fas fa-user"></i> Profile
                             </a>
                             <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" id="themeToggleBtn" onclick="toggleTheme()" type="button" style="width:100%; text-align:left; cursor:pointer; background:none; border:none; font-family:inherit; font-size:13px;">
+                                <i class="fas fa-moon" id="themeIcon"></i>
+                                <span id="themeLabel">Dark Mode</span>
+                            </button>
+                            <div class="dropdown-divider"></div>
                             <a href="{% url 'logout' %}" class="dropdown-item" style="color: var(--danger);">
                                 <i class="fas fa-sign-out-alt"></i> Log Out
                             </a>
@@ -130,13 +153,71 @@
     </div>
 
     <script>
+        // ---- Theme ----
+        // Sync the icon/label to match the current html[data-theme] state
+        function syncThemeUI() {
+            var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.getElementById('themeIcon').className = dark ? 'fas fa-sun' : 'fas fa-moon';
+            document.getElementById('themeLabel').textContent = dark ? 'Light Mode' : 'Dark Mode';
+        }
+
+        function toggleTheme() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            syncThemeUI();
+        }
+
+        // Sync icon/label on page load (html[data-theme] already set by <head> script)
+        syncThemeUI();
+
+        // ---- Dropdown ----
         function toggleDropdown() {
             document.getElementById('profileDropdown').classList.toggle('show');
         }
-        // Close dropdown when clicking outside
         document.addEventListener('click', function (e) {
             if (!e.target.closest('.profile-dropdown')) {
                 document.getElementById('profileDropdown').classList.remove('show');
+            }
+        });
+
+        // ---- Mobile Sidebar Drawer (3-button menu) ----
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            if (sidebar && overlay) {
+                var isOpen = sidebar.classList.toggle('open');
+                overlay.classList.toggle('active', isOpen);
+                document.body.classList.toggle('sidebar-open', isOpen);
+            }
+        }
+
+        function closeSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
+        }
+
+        // Close drawer when a navigation link inside the sidebar is tapped on phone
+        document.querySelectorAll('.sidebar-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.innerWidth <= 991) {
+                    closeSidebar();
+                }
+            });
+        });
+
+        // Close drawer on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeSidebar();
             }
         });
     </script>

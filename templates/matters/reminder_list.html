@@ -1,16 +1,109 @@
 {% extends 'base.html' %}
 {% block title %}Reminders — TaskMatters{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Reminders</h1><p>Your upcoming reminders</p></div><a href="{% url 'reminder_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Reminder</a></div>
-<div class="card"><div class="table-container"><table>
-<thead><tr><th>Title</th><th>Due Date</th><th>Matter</th><th>Task</th><th>Status</th><th>Actions</th></tr></thead>
-<tbody>{% for r in reminders %}<tr>
-<td style="font-weight: 500;">{{ r.title }}</td>
-<td>{% if r.is_overdue %}<span style="color: var(--danger); font-weight: 600;">{% endif %}{{ r.due_date|date:"M d, Y H:i" }}{% if r.is_overdue %}</span>{% endif %}</td>
-<td>{% if r.matter %}{{ r.matter.title }}{% else %}—{% endif %}</td>
-<td>{% if r.task %}{{ r.task.title }}{% else %}—{% endif %}</td>
-<td><span class="badge {% if r.is_completed %}badge-success{% elif r.is_overdue %}badge-danger{% else %}badge-warning{% endif %}">{% if r.is_completed %}Completed{% elif r.is_overdue %}Overdue{% else %}Pending{% endif %}</span></td>
-<td><div class="flex gap-1">{% if not r.is_completed %}<a href="{% url 'reminder_complete' r.id %}" class="btn btn-sm btn-success"><i class="fas fa-check"></i></a>{% endif %}<a href="{% url 'reminder_delete' r.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);"><i class="fas fa-trash"></i></a></div></td>
-</tr>{% empty %}<tr><td colspan="6" class="text-center" style="padding: 40px; color: var(--text-light);">No reminders.</td></tr>{% endfor %}</tbody>
-</table></div></div>
+<div class="page-header">
+    <div>
+        <h1>Reminders</h1>
+        <p>Upcoming matter and task due date reminders</p>
+    </div>
+    <a href="{% url 'reminder_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> New Reminder</a>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title & Description</th>
+                    <th>Due Date</th>
+                    <th>Matter</th>
+                    <th>Task</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reminders %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">{{ r.title }}</div>
+                        {% if r.description %}
+                        <div style="font-size: 12px; color: var(--text-secondary);">{{ r.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.is_overdue %}
+                        <span style="color: var(--danger); font-weight: 600;"><i class="fas fa-exclamation-triangle"></i> {{ r.due_date|date:"M d, Y" }}</span>
+                        {% else %}
+                        <span style="font-weight: 500;"><i class="far fa-calendar-alt"></i> {{ r.due_date|date:"M d, Y" }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.matter %}
+                        <a href="{% url 'matter_detail' r.matter.id %}" style="font-weight: 500;"><i class="fas fa-briefcase"></i> {{ r.matter.title }}</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.task %}
+                        <a href="{% url 'task_detail' r.task.id %}" style="font-weight: 500;"><i class="fas fa-tasks"></i> {{ r.task.title }}</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.task %}
+                            {% for u in r.task.get_all_assigned_users %}
+                            <span class="badge badge-secondary" style="font-size: 11px; margin: 1px;">
+                                <i class="fas fa-user"></i> {{ u.get_full_name|default:u.username }}
+                            </span>
+                            {% empty %}
+                            <span class="badge badge-secondary" style="font-size: 11px;">
+                                <i class="fas fa-user"></i> {{ r.user.get_full_name|default:r.user.username }}
+                            </span>
+                            {% endfor %}
+                        {% elif r.matter %}
+                            {% for u in r.matter.get_all_assigned_users %}
+                            <span class="badge badge-secondary" style="font-size: 11px; margin: 1px;">
+                                <i class="fas fa-user"></i> {{ u.get_full_name|default:u.username }}
+                            </span>
+                            {% empty %}
+                            <span class="badge badge-secondary" style="font-size: 11px;">
+                                <i class="fas fa-user"></i> {{ r.user.get_full_name|default:r.user.username }}
+                            </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="badge badge-secondary" style="font-size: 11px;">
+                                <i class="fas fa-user"></i> {{ r.user.get_full_name|default:r.user.username }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {% if r.is_completed %}badge-success{% elif r.is_overdue %}badge-danger{% else %}badge-warning{% endif %}">
+                            {% if r.is_completed %}Completed{% elif r.is_overdue %}Overdue{% else %}Pending{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="flex gap-1">
+                            {% if not r.is_completed %}
+                            <a href="{% url 'reminder_complete' r.id %}" class="btn btn-sm btn-success" title="Mark Complete"><i class="fas fa-check"></i></a>
+                            {% endif %}
+                            <a href="{% url 'reminder_delete' r.id %}" class="btn btn-sm btn-outline" style="color: var(--danger);" title="Delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 40px; color: var(--text-light);">
+                        <i class="fas fa-bell-slash" style="font-size: 28px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
+                        No reminders found. Active matters and tasks due within 1–2 days will automatically appear here.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

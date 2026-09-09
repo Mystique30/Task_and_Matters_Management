@@ -12,7 +12,17 @@
             <div class="detail-meta-item"><i class="fas fa-flag"></i> {{ task.get_priority_display }}</div>
             {% if task.matter %}<div class="detail-meta-item"><i class="fas fa-briefcase"></i> <a href="{% url 'matter_detail' task.matter.id %}">{{ task.matter.title }}</a></div>{% endif %}
             {% if task.due_date %}<div class="detail-meta-item"><i class="fas fa-calendar"></i> Due: {{ task.due_date|date:"M d, Y" }}{% if task.is_overdue %} <span class="badge badge-danger">Overdue</span>{% endif %}</div>{% endif %}
-            <div class="detail-meta-item"><i class="fas fa-user"></i> Assigned: {{ task.assigned_to.username|default:"Unassigned" }}</div>
+            <div class="detail-meta-item"><i class="fas fa-users"></i> Assigned:
+                {% with assignees=task.get_all_assigned_users %}
+                    {% if assignees %}
+                        {% for u in assignees %}
+                            <span class="badge badge-secondary" style="font-size: 11px; margin-left: 2px;">{{ u.username }}</span>
+                        {% endfor %}
+                    {% else %}
+                        Unassigned
+                    {% endif %}
+                {% endwith %}
+            </div>
             <div class="detail-meta-item"><i class="fas fa-user-edit"></i> Created by: {{ task.created_by.username }}</div>
         </div>
     </div>
@@ -20,7 +30,7 @@
         {% if request.user.profile.is_admin or request.user.profile.is_manager %}
         <a href="{% url 'task_edit' task.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit</a>
         <a href="{% url 'task_delete' task.id %}" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</a>
-        {% elif task.assigned_to == request.user %}
+        {% elif request.user in task.get_all_assigned_users %}
         <a href="{% url 'task_edit' task.id %}" class="btn btn-outline"><i class="fas fa-edit"></i> Edit Status</a>
         {% endif %}
     </div>
