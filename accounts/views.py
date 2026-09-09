@@ -128,9 +128,10 @@ def user_create_view(request):
                 first_name=form.cleaned_data.get('first_name', ''),
                 last_name=form.cleaned_data.get('last_name', ''),
             )
-            # Update the auto-created profile with the selected role
-            user.profile.role = form.cleaned_data['role']
-            user.profile.save()
+            # Ensure profile exists and set the role
+            profile, _ = Profile.objects.get_or_create(user=user)
+            profile.role = form.cleaned_data['role']
+            profile.save()
 
             messages.success(request, f'User "{user.username}" created successfully.')
             return redirect('user_list')
@@ -155,8 +156,9 @@ def user_edit_view(request, user_id):
             edit_user.is_active = form.cleaned_data['is_active']
             edit_user.save()
 
-            edit_user.profile.role = form.cleaned_data['role']
-            edit_user.profile.save()
+            profile, _ = Profile.objects.get_or_create(user=edit_user)
+            profile.role = form.cleaned_data['role']
+            profile.save()
 
             messages.success(request, f'User "{edit_user.username}" updated successfully.')
             return redirect('user_list')

@@ -9,9 +9,15 @@
     <div class="card-body">
         <form method="POST">
             {% csrf_token %}
-            {% if form.errors %}<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> {% for error in
-                form.non_field_errors %}{{ error }} {% endfor %}{% for field in form %}{% for error in field.errors %}{{
-                field.label }}: {{ error }} {% endfor %}{% endfor %}</div>{% endif %}
+            {% if form.errors %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                {% for field in form %}
+                    {% for error in field.errors %}<div><strong>{{ field.label }}:</strong> {{ error }}</div>{% endfor %}
+                {% endfor %}
+            </div>
+            {% endif %}
             {% for field in form %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
