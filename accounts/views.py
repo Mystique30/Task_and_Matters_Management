@@ -5,6 +5,7 @@ from django.contrib import messages
 
 from .decorators import login_required_custom, admin_required
 from .forms import LoginForm, RegisterForm, UserCreateForm, UserEditForm, ProfileForm
+from .models import Profile
 
 
 # ============================================================
