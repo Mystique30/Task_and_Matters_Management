@@ -54,4 +54,7 @@ urlpatterns = [
     path('chat/', views.live_chat_view, name='live_chat'),
     path('chat/api/messages/', views.chat_api_messages, name='chat_api_messages'),
     path('chat/api/send/', views.chat_api_send, name='chat_api_send'),
+
+    # Real-time Auto-Sync State Check
+    path('api/sync-state/', views.api_sync_state, name='api_sync_state'),
 ]

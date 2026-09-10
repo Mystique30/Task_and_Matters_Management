@@ -22,7 +22,17 @@
                 <tr>
                     <td><a href="{% url 'task_detail' task.id %}" style="font-weight: 500;">{{ task.title }}</a></td>
                     <td>{% if task.matter %}<a href="{% url 'matter_detail' task.matter.id %}">{{ task.matter.title }}</a>{% else %}—{% endif %}</td>
-                    <td><span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">{{ task.get_status_display }}</span></td>
+                    <td>
+                        {% if request.user.profile.is_admin or request.user.profile.is_manager or request.user in task.get_all_assigned_users %}
+                        <select class="form-input quick-status-select" data-task-id="{{ task.id }}" onchange="updateTaskStatusFast(this)" style="font-size: 12px; padding: 3px 8px; border-radius: 6px; font-weight: 600; width: auto; cursor: pointer; display: inline-block;">
+                            <option value="todo" {% if task.status == 'todo' %}selected{% endif %}>To Do</option>
+                            <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                            <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                        </select>
+                        {% else %}
+                        <span class="badge {% if task.status == 'todo' %}badge-info{% elif task.status == 'in_progress' %}badge-warning{% else %}badge-success{% endif %}">{{ task.get_status_display }}</span>
+                        {% endif %}
+                    </td>
                     <td><span class="priority-{{ task.priority }}">{{ task.get_priority_display }}</span></td>
                     <td>
                         {% with assignees=task.get_all_assigned_users %}
@@ -55,4 +65,49 @@
         </table>
     </div>
 </div>
+
+<script>
+function updateTaskStatusFast(selectEl) {
+    const taskId = selectEl.getAttribute('data-task-id');
+    const newStatus = selectEl.value;
+    const prevBg = selectEl.style.backgroundColor;
+
+    selectEl.disabled = true;
+    selectEl.style.opacity = '0.7';
+
+    // Get CSRF token
+    let csrfToken = '';
+    const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+    if (cookieMatch) {
+        csrfToken = cookieMatch[1];
+    }
+
+    const formData = new FormData();
+    formData.append('status', newStatus);
+
+    fetch(`/dashboard/task/${taskId}/status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        selectEl.disabled = false;
+        selectEl.style.opacity = '1';
+        if (data.success) {
+            selectEl.style.borderColor = 'var(--success, #10b981)';
+            setTimeout(() => { selectEl.style.borderColor = ''; }, 1200);
+        } else {
+            alert(data.error || 'Failed to update status');
+        }
+    })
+    .catch(err => {
+        selectEl.disabled = false;
+        selectEl.style.opacity = '1';
+        console.error('Error updating status:', err);
+    });
+}
+</script>
 {% endblock %}

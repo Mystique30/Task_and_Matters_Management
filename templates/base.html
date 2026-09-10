@@ -223,6 +223,95 @@
                 closeSidebar();
             }
         });
+
+        // ============================================================
+        // ⚡ REAL-TIME BACKGROUND AUTO-SYNC (No Manual Refresh Required)
+        // ============================================================
+        (function() {
+            {% if request.user.is_authenticated %}
+            let currentSyncHash = null;
+            let isSyncing = false;
+            const syncIntervalMs = 6000; // Check every 6 seconds
+
+            // Pages that benefit from auto-refreshing their data view when team members make changes
+            const autoRefreshPaths = [
+                "{% url 'dashboard' %}",
+                "{% url 'task_list' %}",
+                "{% url 'matter_list' %}",
+                "{% url 'timeline' %}",
+                "{% url 'document_list' %}",
+                "{% url 'reminder_list' %}",
+                "{% url 'comment_list' %}",
+                "{% url 'reports' %}"
+            ];
+
+            const currentPath = window.location.pathname;
+            const isAutoRefreshPage = autoRefreshPaths.some(p => currentPath === p || (p !== '/' && currentPath.startsWith(p)));
+
+            // Never auto-refresh when the user is editing or actively filling out a form!
+            function isUserInteractingWithForm() {
+                const active = document.activeElement;
+                if (!active) return false;
+                const tag = active.tagName.toLowerCase();
+                return tag === 'input' || tag === 'textarea' || tag === 'select';
+            }
+
+            async function checkSyncState() {
+                if (isSyncing || document.hidden) return;
+                isSyncing = true;
+
+                try {
+                    const res = await fetch("{% url 'api_sync_state' %}", {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!res.ok) throw new Error('Sync check error');
+                    const data = await res.json();
+
+                    if (data.status === 'ok') {
+                        // 1. Update Notification Bell Badge in real-time
+                        const badgeEl = document.querySelector('.notification-badge');
+                        const bellBtn = document.querySelector('a[title="Notifications"]');
+                        if (data.unread_notifications > 0) {
+                            if (badgeEl) {
+                                badgeEl.textContent = data.unread_notifications;
+                            } else if (bellBtn) {
+                                const newBadge = document.createElement('span');
+                                newBadge.className = 'notification-badge';
+                                newBadge.textContent = data.unread_notifications;
+                                bellBtn.appendChild(newBadge);
+                            }
+                        } else if (badgeEl) {
+                            badgeEl.remove();
+                        }
+
+                        // 2. Detect if project data changed (new tasks, matters, comments, status changes)
+                        if (currentSyncHash === null) {
+                            currentSyncHash = data.state_hash;
+                        } else if (currentSyncHash !== data.state_hash) {
+                            currentSyncHash = data.state_hash;
+                            
+                            // If user is on a live-collaboration list/dashboard page and not typing into a form, refresh view
+                            if (isAutoRefreshPage && !isUserInteractingWithForm()) {
+                                // Smooth in-place reload without breaking scroll or jarring user
+                                window.location.reload();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Fail silently on background network hiccup
+                } finally {
+                    isSyncing = false;
+                }
+            }
+
+            // Run initial check after 2 seconds, then recurring interval
+            setTimeout(checkSyncState, 2000);
+            setInterval(checkSyncState, syncIntervalMs);
+
+            // Also check immediately when tab regains focus
+            window.addEventListener('focus', checkSyncState);
+            {% endif %}
+        })();
     </script>
 </body>
 

@@ -1285,3 +1285,36 @@ def chat_api_send(request):
             'date_str': timezone.localtime(msg.created_at).strftime('%b %d, %Y'),
         }
     })
+
+
+@login_required_custom
+def api_sync_state(request):
+    """
+    Lightweight heartbeat endpoint returning a state signature for the current user.
+    Enables automatic screen updates across tabs and devices without full manual page reloads.
+    """
+    # 1. Latest activity timestamp
+    latest_timeline = TimelineEntry.objects.order_by('-timestamp').values_list('timestamp', flat=True).first()
+    timeline_ts = latest_timeline.isoformat() if latest_timeline else 'none'
+
+    # 2. Latest task update
+    latest_task = Task.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+    task_ts = latest_task.isoformat() if latest_task else 'none'
+
+    # 3. Latest matter update
+    latest_matter = Matter.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+    matter_ts = latest_matter.isoformat() if latest_matter else 'none'
+
+    # 4. Unread notifications for this user
+    unread_notifications = Notification.objects.filter(user=request.user, is_read=False).count()
+
+    # Composite state hash
+    import hashlib
+    state_str = f"{timeline_ts}:{task_ts}:{matter_ts}:{unread_notifications}"
+    state_hash = hashlib.md5(state_str.encode('utf-8')).hexdigest()
+
+    return JsonResponse({
+        'status': 'ok',
+        'state_hash': state_hash,
+        'unread_notifications': unread_notifications,
+    })
