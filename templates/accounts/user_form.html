@@ -19,9 +19,20 @@
             </div>
             {% endif %}
             {% for field in form %}
+            {% if field.html_name == 'new_password' %}
+            <div style="border-top: 1px solid var(--border); margin: 20px 0 16px; padding-top: 14px;">
+                <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text-primary);"><i class="fas fa-key" style="margin-right: 6px; color: var(--primary);"></i> Reset Password</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 14px;">Optional: Leave these blank if you do not want to change this user's password.</p>
+            </div>
+            {% endif %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
+                {% if field.errors %}
+                <div style="color: var(--danger); font-size: 12px; margin-top: 4px;">
+                    {% for error in field.errors %}{{ error }}{% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
             <div class="flex gap-1 mt-2">

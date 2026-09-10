@@ -143,6 +143,35 @@ class UserEditForm(forms.Form):
             'class': 'form-checkbox',
         })
     )
+    new_password = forms.CharField(
+        label='New Password (leave blank to keep current)',
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter new password (optional)',
+            'autocomplete': 'new-password',
+        })
+    )
+    confirm_new_password = forms.CharField(
+        label='Confirm New Password',
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Confirm new password',
+            'autocomplete': 'new-password',
+        })
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_new_password = cleaned_data.get('confirm_new_password')
+        if new_password:
+            if len(new_password) < 8:
+                raise forms.ValidationError('New password must be at least 8 characters long.')
+            if new_password != confirm_new_password:
+                raise forms.ValidationError('New passwords do not match.')
+        return cleaned_data
 
 
 class ProfileForm(forms.Form):
@@ -174,3 +203,51 @@ class ProfileForm(forms.Form):
             'placeholder': 'Phone number',
         })
     )
+
+
+class PasswordChangeForm(forms.Form):
+    """Form for users to change their own password."""
+    current_password = forms.CharField(
+        label='Current Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter your current password',
+            'autocomplete': 'current-password',
+        })
+    )
+    new_password = forms.CharField(
+        label='New Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Enter a new password (min. 8 characters)',
+            'autocomplete': 'new-password',
+        })
+    )
+    confirm_new_password = forms.CharField(
+        label='Confirm New Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Re-enter your new password',
+            'autocomplete': 'new-password',
+        })
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        current = self.cleaned_data.get('current_password')
+        if not self.user.check_password(current):
+            raise forms.ValidationError('Your current password is incorrect.')
+        return current
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm = cleaned_data.get('confirm_new_password')
+        if new_password and confirm and new_password != confirm:
+            raise forms.ValidationError('New passwords do not match.')
+        if new_password and len(new_password) < 8:
+            raise forms.ValidationError('New password must be at least 8 characters long.')
+        return cleaned_data

@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 
 from .decorators import login_required_custom, admin_required
-from .forms import LoginForm, RegisterForm, UserCreateForm, UserEditForm, ProfileForm
+from .forms import LoginForm, RegisterForm, UserCreateForm, UserEditForm, ProfileForm, PasswordChangeForm
 from .models import Profile
 
 
@@ -103,6 +103,25 @@ def profile_view(request):
     return render(request, 'accounts/profile.html', {'form': form})
 
 
+@login_required_custom
+def change_password_view(request):
+    """Allows any logged-in user to change their own password."""
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            request.user.set_password(form.cleaned_data['new_password'])
+            request.user.save()
+            # Re-authenticate so the session stays valid after password change
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, request.user)
+            messages.success(request, 'Password changed successfully!')
+            return redirect('profile')
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'accounts/change_password.html', {'form': form})
+
+
 # ============================================================
 # USER ADMINISTRATION — Admin only
 # ============================================================
@@ -161,7 +180,18 @@ def user_edit_view(request, user_id):
             profile.role = form.cleaned_data['role']
             profile.save()
 
-            messages.success(request, f'User "{edit_user.username}" updated successfully.')
+            # If admin provided a new password for the user
+            new_password = form.cleaned_data.get('new_password')
+            if new_password:
+                edit_user.set_password(new_password)
+                edit_user.save()
+                if edit_user == request.user:
+                    from django.contrib.auth import update_session_auth_hash
+                    update_session_auth_hash(request, request.user)
+                messages.success(request, f'User "{edit_user.username}" updated and password successfully changed.')
+            else:
+                messages.success(request, f'User "{edit_user.username}" updated successfully.')
+
             return redirect('user_list')
     else:
         form = UserEditForm(initial={
