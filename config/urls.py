@@ -9,6 +9,6 @@ urlpatterns = [
     path('', include('accounts.urls')),
 ]
 
-# Serve media files during development
-if settings.DEBUG:
+# Serve media files during local development when not using R2/S3
+if settings.DEBUG and hasattr(settings, 'MEDIA_ROOT'):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
