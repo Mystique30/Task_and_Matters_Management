@@ -21,8 +21,9 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# TEMPORARY: Enable debug to diagnose 500 error
 if IS_VERCEL:
-    DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+    DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 else:
     DEBUG = True
 
