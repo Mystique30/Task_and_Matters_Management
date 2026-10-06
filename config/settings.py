@@ -51,6 +51,19 @@ else:
         'http://localhost:8000',
     ]
 
+# Security & Cookie settings for Vercel / HTTPS reverse proxy
+if IS_VERCEL:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Session longevity — keeps users logged in for 30 days.
+# Prevents iOS Safari ITP from auto-deleting sessions after 7 days of inactivity.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days in seconds
+SESSION_SAVE_EVERY_REQUEST = True        # Reset the 30-day timer on every visit
+
 
 # Application definition
 
